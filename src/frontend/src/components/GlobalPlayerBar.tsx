@@ -25,6 +25,7 @@ import {
 import { motion } from "motion/react";
 import { useState } from "react";
 import { type RepeatMode, usePlayer } from "../contexts/PlayerContext";
+import { useLiveListeners } from "../hooks/useLiveListeners";
 
 function formatTime(secs: number) {
   if (!Number.isFinite(secs) || secs < 0) return "0:00";
@@ -61,9 +62,10 @@ export function GlobalPlayerBar() {
 
   const [queueOpen, setQueueOpen] = useState(false);
 
-  if (queue.length === 0) return null;
-
   const currentTrack = currentIndex >= 0 ? queue[currentIndex] : null;
+  const listenerCount = useLiveListeners(currentTrack?.id ?? "");
+
+  if (queue.length === 0) return null;
 
   const progress = duration > 0 ? currentTime : 0;
 
@@ -127,6 +129,20 @@ export function GlobalPlayerBar() {
             <p className="text-xs text-muted-foreground font-ui truncate mt-0.5">
               {currentTrack?.artist ?? ""}
             </p>
+            {currentTrack && playing && (
+              <div
+                className="flex items-center gap-1 mt-0.5"
+                data-ocid="player.live_listeners.panel"
+              >
+                <span className="relative flex h-1.5 w-1.5 shrink-0">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" />
+                  <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-green-500" />
+                </span>
+                <span className="text-xs font-ui text-green-400/90 tabular-nums">
+                  {listenerCount.toLocaleString()} listening
+                </span>
+              </div>
+            )}
           </div>
         </div>
 

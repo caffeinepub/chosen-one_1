@@ -42,6 +42,7 @@ import { CommentsSection } from "../components/CommentsSection";
 import { StarRating } from "../components/StarRating";
 import { type QueueTrack, usePlayer } from "../contexts/PlayerContext";
 import { useInternetIdentity } from "../hooks/useInternetIdentity";
+import { useLiveListeners } from "../hooks/useLiveListeners";
 import {
   useCharts,
   useChartsFilteredByLocation,
@@ -218,6 +219,8 @@ function TrackCard({
     ? track.ownerId.toString() === callerPrincipal
     : false;
 
+  const listenerCount = useLiveListeners(track.id);
+
   const ocid = `charts.item.${index + 1}`;
 
   const locationLabel =
@@ -367,6 +370,22 @@ function TrackCard({
                 <MessageCircle className="h-3.5 w-3.5" />
                 <span className="text-xs font-ui tabular-nums">
                   {commentCount}
+                </span>
+              </div>
+            )}
+
+            {/* Live listeners badge — only when this track is the current one */}
+            {isCurrentTrack && (
+              <div
+                className="flex items-center gap-1.5 shrink-0"
+                data-ocid="track.live_listeners.panel"
+              >
+                <span className="relative flex h-2 w-2 shrink-0">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" />
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500" />
+                </span>
+                <span className="text-xs font-ui font-semibold text-green-400 tabular-nums whitespace-nowrap">
+                  {listenerCount.toLocaleString()} listening
                 </span>
               </div>
             )}
