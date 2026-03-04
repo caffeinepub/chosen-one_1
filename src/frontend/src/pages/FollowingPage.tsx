@@ -21,6 +21,8 @@ import {
   LogIn,
   MessageCircle,
   Music2,
+  Pause,
+  Play,
   Rss,
   Send,
   Sparkles,
@@ -31,9 +33,9 @@ import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import type { AverageRating, Track } from "../backend.d";
-import { AudioPlayer } from "../components/AudioPlayer";
 import { CommentsSection } from "../components/CommentsSection";
 import { StarRating } from "../components/StarRating";
+import { type QueueTrack, usePlayer } from "../contexts/PlayerContext";
 import { useActor } from "../hooks/useActor";
 import { useInternetIdentity } from "../hooks/useInternetIdentity";
 import {
@@ -45,6 +47,16 @@ import {
   useRateTrack,
   useSendMusicRequest,
 } from "../hooks/useQueries";
+
+function trackToQueueTrack(track: Track): QueueTrack {
+  return {
+    id: track.id,
+    title: track.title,
+    artist: track.artist,
+    audioUrl: track.audioFileKey.getDirectURL(),
+    coverUrl: track.coverKey?.getDirectURL(),
+  };
+}
 
 /* ── Relative time ───────────────────────────────────── */
 function relativeTime(ns: bigint): string {
@@ -59,7 +71,15 @@ function relativeTime(ns: bigint): string {
 }
 
 /* ── Feed Track Card ─────────────────────────────────── */
-function FeedTrackCard({ track, index }: { track: Track; index: number }) {
+function FeedTrackCard({
+  track,
+  index,
+  allTracks,
+}: {
+  track: Track;
+  index: number;
+  allTracks: Track[];
+}) {
   const [expanded, setExpanded] = useState(false);
   const [userRating, setUserRating] = useState(0);
   const [requestOpen, setRequestOpen] = useState(false);
@@ -71,9 +91,25 @@ function FeedTrackCard({ track, index }: { track: Track; index: number }) {
   const likeMutation = useLikeTrack();
   const sendRequestMutation = useSendMusicRequest();
   const commentCount = useCommentCount(track.id);
+  const player = usePlayer();
 
   const coverUrl = track.coverKey?.getDirectURL();
-  const audioUrl = track.audioFileKey.getDirectURL();
+  const queueTrack = trackToQueueTrack(track);
+  const contextQueue = allTracks.map(trackToQueueTrack);
+
+  const isCurrentTrack =
+    player.currentIndex >= 0 &&
+    player.queue[player.currentIndex]?.id === track.id;
+  const isPlaying = isCurrentTrack && player.playing;
+
+  const handlePlayPause = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (isCurrentTrack) {
+      player.togglePlay();
+    } else {
+      player.playTrack(queueTrack, contextQueue);
+    }
+  };
 
   const avgRating =
     track.ratings.length > 0
@@ -273,6 +309,27 @@ function FeedTrackCard({ track, index }: { track: Track; index: number }) {
               </button>
             )}
 
+            {/* Play / Pause button */}
+            <button
+              type="button"
+              onClick={handlePlayPause}
+              aria-label={isPlaying ? "Pause" : "Play track"}
+              data-ocid="track.play.button"
+              className={cn(
+                "flex items-center justify-center h-8 w-8 rounded-full transition-all duration-200 shrink-0",
+                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold/50",
+                isCurrentTrack
+                  ? "bg-gold/20 border border-gold/40 text-gold hover:bg-gold/30 shadow-[0_0_8px_oklch(0.78_0.17_72/0.3)]"
+                  : "text-muted-foreground hover:text-gold hover:bg-gold/10 border border-transparent hover:border-gold/25",
+              )}
+            >
+              {isPlaying ? (
+                <Pause className="h-3.5 w-3.5 fill-current" />
+              ) : (
+                <Play className="h-3.5 w-3.5 fill-current ml-0.5" />
+              )}
+            </button>
+
             {/* Expand icon */}
             <button
               type="button"
@@ -299,8 +356,6 @@ function FeedTrackCard({ track, index }: { track: Track; index: number }) {
               className="overflow-hidden"
             >
               <div className="border-t border-border px-4 pb-4 pt-3 space-y-4">
-                <AudioPlayer src={audioUrl} />
-
                 {track.description && (
                   <p className="text-sm text-muted-foreground leading-relaxed">
                     {track.description}
@@ -556,7 +611,12 @@ function FollowingFeed() {
   return (
     <div className="space-y-3" data-ocid="following.list">
       {tracks.map((track, idx) => (
-        <FeedTrackCard key={track.id} track={track} index={idx} />
+        <FeedTrackCard
+          key={track.id}
+          track={track}
+          index={idx}
+          allTracks={tracks}
+        />
       ))}
     </div>
   );

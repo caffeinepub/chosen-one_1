@@ -7,7 +7,9 @@ import {
   createRouter,
 } from "@tanstack/react-router";
 import { Footer } from "./components/Footer";
+import { GlobalPlayerBar } from "./components/GlobalPlayerBar";
 import { Navbar } from "./components/Navbar";
+import { PlayerProvider, usePlayer } from "./contexts/PlayerContext";
 import { ArtistProfilePage } from "./pages/ArtistProfilePage";
 import { ChartsPage } from "./pages/ChartsPage";
 import { FollowingPage } from "./pages/FollowingPage";
@@ -16,15 +18,22 @@ import { MyTracksPage } from "./pages/MyTracksPage";
 import { ProfilePage } from "./pages/ProfilePage";
 import { UploadPage } from "./pages/UploadPage";
 
-/* ── Root layout ─────────────────────────────────────── */
-const rootRoute = createRootRoute({
-  component: () => (
-    <div className="min-h-screen flex flex-col bg-background">
+/* ── Root layout inner (needs usePlayer for pb-20) ──── */
+function RootLayout() {
+  const { queue } = usePlayer();
+  return (
+    <div
+      className={cn(
+        "min-h-screen flex flex-col bg-background",
+        queue.length > 0 ? "pb-20" : "",
+      )}
+    >
       <Navbar />
       <div className="flex-1">
         <Outlet />
       </div>
       <Footer />
+      <GlobalPlayerBar />
       <Toaster
         theme="dark"
         toastOptions={{
@@ -36,6 +45,19 @@ const rootRoute = createRootRoute({
         }}
       />
     </div>
+  );
+}
+
+function cn(...args: (string | boolean | undefined | null)[]) {
+  return args.filter(Boolean).join(" ");
+}
+
+/* ── Root layout ─────────────────────────────────────── */
+const rootRoute = createRootRoute({
+  component: () => (
+    <PlayerProvider>
+      <RootLayout />
+    </PlayerProvider>
   ),
 });
 

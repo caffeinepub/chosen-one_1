@@ -18,15 +18,9 @@ export function useCharts() {
     queryKey: ["charts"],
     queryFn: async () => {
       if (!actor) return [];
-      try {
-        return await actor.getTracksSortedByRating();
-      } catch {
-        return [];
-      }
+      return actor.getTracksSortedByRating();
     },
     enabled: !!actor && !isFetching,
-    retry: 3,
-    retryDelay: (attempt) => attempt * 1000,
   });
 }
 
@@ -37,15 +31,9 @@ export function useChartsInWindow(windowType: string) {
     queryKey: ["charts", windowType],
     queryFn: async () => {
       if (!actor) return [];
-      try {
-        return await actor.getTracksSortedByRatingInWindow(windowType);
-      } catch {
-        return [];
-      }
+      return actor.getTracksSortedByRatingInWindow(windowType);
     },
     enabled: !!actor && !isFetching,
-    retry: 3,
-    retryDelay: (attempt) => attempt * 1000,
   });
 }
 
@@ -61,19 +49,13 @@ export function useChartsFilteredByLocation(
     queryKey: ["charts", windowType, locationType, locationValue],
     queryFn: async () => {
       if (!actor) return [];
-      try {
-        return await actor.getTracksFilteredByLocation(
-          windowType,
-          locationType,
-          locationValue,
-        );
-      } catch {
-        return [];
-      }
+      return actor.getTracksFilteredByLocation(
+        windowType,
+        locationType,
+        locationValue,
+      );
     },
     enabled: !!actor && !isFetching && !isNationwideNoValue,
-    retry: 3,
-    retryDelay: (attempt) => attempt * 1000,
   });
 }
 

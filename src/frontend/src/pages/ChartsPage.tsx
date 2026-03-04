@@ -28,6 +28,9 @@ import {
   MapPin,
   MessageCircle,
   Music2,
+  Pause,
+  Play,
+  PlayCircle,
   Send,
   TrendingUp,
 } from "lucide-react";
@@ -35,9 +38,9 @@ import { AnimatePresence, motion } from "motion/react";
 import { useState } from "react";
 import { toast } from "sonner";
 import type { AverageRating } from "../backend.d";
-import { AudioPlayer } from "../components/AudioPlayer";
 import { CommentsSection } from "../components/CommentsSection";
 import { StarRating } from "../components/StarRating";
+import { type QueueTrack, usePlayer } from "../contexts/PlayerContext";
 import { useInternetIdentity } from "../hooks/useInternetIdentity";
 import {
   useCharts,
@@ -48,6 +51,16 @@ import {
   useRateTrack,
   useSendMusicRequest,
 } from "../hooks/useQueries";
+
+function toQueueTrack(entry: AverageRating): QueueTrack {
+  return {
+    id: entry.track.id,
+    title: entry.track.title,
+    artist: entry.track.artist,
+    audioUrl: entry.track.audioFileKey.getDirectURL(),
+    coverUrl: entry.track.coverKey?.getDirectURL(),
+  };
+}
 
 const US_STATES = [
   "Alabama",
@@ -157,10 +170,12 @@ function TrackCard({
   entry,
   rank,
   index,
+  contextQueue,
 }: {
   entry: AverageRating;
   rank: number;
   index: number;
+  contextQueue: QueueTrack[];
 }) {
   const [expanded, setExpanded] = useState(false);
   const [userRating, setUserRating] = useState(0);
@@ -172,13 +187,28 @@ function TrackCard({
   const rateMutation = useRateTrack();
   const likeMutation = useLikeTrack();
   const sendRequestMutation = useSendMusicRequest();
+  const player = usePlayer();
 
   const { track, averageRating } = entry;
   const coverUrl = track.coverKey?.getDirectURL();
-  const audioUrl = track.audioFileKey.getDirectURL();
   const ratingCount = track.ratings.length;
   const isTopTrack = rank === 1;
   const commentCount = useCommentCount(track.id);
+
+  const queueTrack = toQueueTrack(entry);
+  const isCurrentTrack =
+    player.currentIndex >= 0 &&
+    player.queue[player.currentIndex]?.id === track.id;
+  const isPlaying = isCurrentTrack && player.playing;
+
+  const handlePlayPause = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (isCurrentTrack) {
+      player.togglePlay();
+    } else {
+      player.playTrack(queueTrack, contextQueue);
+    }
+  };
 
   const likeCount = track.likes.length;
   const hasLiked = callerPrincipal
@@ -390,6 +420,27 @@ function TrackCard({
               </button>
             )}
 
+            {/* Play / Pause button */}
+            <button
+              type="button"
+              onClick={handlePlayPause}
+              aria-label={isPlaying ? "Pause" : "Play track"}
+              data-ocid="track.play.button"
+              className={cn(
+                "flex items-center justify-center h-8 w-8 rounded-full transition-all duration-200 shrink-0",
+                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold/50",
+                isCurrentTrack
+                  ? "bg-gold/20 border border-gold/40 text-gold hover:bg-gold/30 shadow-[0_0_8px_oklch(0.78_0.17_72/0.3)]"
+                  : "text-muted-foreground hover:text-gold hover:bg-gold/10 border border-transparent hover:border-gold/25",
+              )}
+            >
+              {isPlaying ? (
+                <Pause className="h-3.5 w-3.5 fill-current" />
+              ) : (
+                <Play className="h-3.5 w-3.5 fill-current ml-0.5" />
+              )}
+            </button>
+
             {/* Expand icon */}
             <button
               type="button"
@@ -416,8 +467,6 @@ function TrackCard({
               className="overflow-hidden"
             >
               <div className="border-t border-border px-4 pb-4 pt-3 space-y-4">
-                <AudioPlayer src={audioUrl} />
-
                 {track.description && (
                   <p className="text-sm text-muted-foreground leading-relaxed">
                     {track.description}
@@ -576,6 +625,8 @@ function ChartsList({
   locationValue: string;
   selectedGenre: string | null;
 }) {
+  const player = usePlayer();
+
   // Decide which query to use
   const allTimeQuery = useCharts();
   const windowQuery = useChartsInWindow(
@@ -590,33 +641,19 @@ function ChartsList({
   let data: AverageRating[] | undefined;
   let isLoading: boolean;
   let isError: boolean;
-  let refetch: () => void;
 
   if (locationScope !== "nationwide") {
     data = locationQuery.data;
     isLoading = locationQuery.isLoading;
     isError = locationQuery.isError;
-    refetch = locationQuery.refetch;
-    // fallback: if location query errors but alltime has data, use alltime
-    if (isError && allTimeQuery.data) {
-      data = allTimeQuery.data;
-      isError = false;
-    }
   } else if (windowType === "alltime") {
     data = allTimeQuery.data;
     isLoading = allTimeQuery.isLoading;
     isError = allTimeQuery.isError;
-    refetch = allTimeQuery.refetch;
   } else {
     data = windowQuery.data;
     isLoading = windowQuery.isLoading;
     isError = windowQuery.isError;
-    refetch = windowQuery.refetch;
-    // fallback: if windowed query fails but alltime has data, use alltime
-    if (isError && allTimeQuery.data) {
-      data = allTimeQuery.data;
-      isError = false;
-    }
   }
 
   // Cap at 100
@@ -631,6 +668,8 @@ function ChartsList({
             (selectedGenre === "Unknown" && entry.track.genre === "Unknown"),
         );
 
+  const queueTracks = filteredCharts.map(toQueueTrack);
+
   if (isLoading) {
     return (
       <div className="space-y-3" data-ocid="charts.loading_state">
@@ -644,19 +683,10 @@ function ChartsList({
   if (isError) {
     return (
       <div
-        className="rounded-xl border border-destructive/30 bg-destructive/5 p-6 text-center space-y-3"
+        className="rounded-xl border border-destructive/30 bg-destructive/5 p-6 text-center"
         data-ocid="charts.error_state"
       >
         <p className="text-destructive font-ui">Failed to load charts</p>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => refetch()}
-          data-ocid="charts.retry.button"
-          className="border-destructive/30 text-destructive hover:bg-destructive/10"
-        >
-          Retry
-        </Button>
       </div>
     );
   }
@@ -707,6 +737,19 @@ function ChartsList({
 
   return (
     <div className="space-y-3" data-ocid="charts.list">
+      {/* Play All button */}
+      <div className="flex justify-end mb-1">
+        <Button
+          size="sm"
+          onClick={() => player.playAll(queueTracks)}
+          data-ocid="charts.play_all.button"
+          className="gap-2 bg-gold/15 text-gold hover:bg-gold/25 border border-gold/25 font-ui font-bold text-xs h-8"
+        >
+          <PlayCircle className="h-3.5 w-3.5" />
+          Play All ({filteredCharts.length})
+        </Button>
+      </div>
+
       {filteredCharts.map((entry, idx) => {
         const originalRank =
           charts.findIndex((c) => c.track.id === entry.track.id) + 1;
@@ -716,6 +759,7 @@ function ChartsList({
             entry={entry}
             rank={originalRank}
             index={idx}
+            contextQueue={queueTracks}
           />
         );
       })}
