@@ -1,16 +1,45 @@
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
-import { CheckCircle2, Image, ImagePlus, Loader2, User } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
+import type { Principal } from "@icp-sdk/core/principal";
+import {
+  CheckCircle2,
+  ChevronDown,
+  CornerDownRight,
+  Image,
+  ImagePlus,
+  Loader2,
+  MessageSquare,
+  User,
+  UserX,
+  Users,
+} from "lucide-react";
 import { motion } from "motion/react";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { ExternalBlob } from "../backend";
+import type { MusicRequest } from "../backend.d";
 import { LoginGate } from "../components/LoginGate";
 import { useInternetIdentity } from "../hooks/useInternetIdentity";
-import { useCallerProfile, useSaveProfile } from "../hooks/useQueries";
+import {
+  useCallerFollowerCount,
+  useCallerFollowingList,
+  useCallerProfile,
+  useMyMusicRequests,
+  useReplyToRequest,
+  useRequestReply,
+  useSaveProfile,
+  useUnfollowArtist,
+  useUserProfile,
+} from "../hooks/useQueries";
 
 type BgStyle = "dark" | "purple" | "blue" | "gold" | "neon" | "sunset";
 
@@ -57,7 +86,6 @@ const BG_STYLES: { id: BgStyle; label: string; css: string; swatch: string }[] =
 function getBgStyle(id: BgStyle): React.CSSProperties {
   const found = BG_STYLES.find((s) => s.id === id);
   if (!found) return {};
-  // Parse the CSS string into a style prop
   const css = found.css;
   if (css.startsWith("background: linear-gradient")) {
     return { background: css.replace("background: ", "") };
@@ -65,12 +93,411 @@ function getBgStyle(id: BgStyle): React.CSSProperties {
   return { background: css.replace("background: ", "") };
 }
 
+/* ── Relative time helper ─────────────────────────── */
+function timeAgo(timestampNs: bigint): string {
+  const ms = Number(timestampNs / 1_000_000n);
+  const diff = Date.now() - ms;
+  const seconds = Math.floor(diff / 1000);
+  if (seconds < 60) return "just now";
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return `${minutes}m ago`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  if (days < 7) return `${days}d ago`;
+  return `${Math.floor(days / 7)}w ago`;
+}
+
+/* ── Following Row ────────────────────────────────── */
+function FollowingRow({
+  artistId,
+  index,
+}: {
+  artistId: Principal;
+  index: number;
+}) {
+  const { data: profile } = useUserProfile(artistId);
+  const unfollowMutation = useUnfollowArtist();
+
+  const handleUnfollow = async () => {
+    try {
+      await unfollowMutation.mutateAsync(artistId);
+      toast.success(`Unfollowed ${profile?.username ?? "artist"}`);
+    } catch {
+      toast.error("Failed to unfollow");
+    }
+  };
+
+  const picUrl = profile?.profilePicKey?.getDirectURL();
+  const initials = profile?.username
+    ? profile.username.slice(0, 1).toUpperCase()
+    : "?";
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, x: -6 }}
+      animate={{ opacity: 1, x: 0 }}
+      transition={{ delay: index * 0.04 }}
+      className="flex items-center gap-3 rounded-xl border border-border bg-secondary/30 p-3"
+    >
+      <Avatar className="h-9 w-9 shrink-0">
+        <AvatarImage src={picUrl} />
+        <AvatarFallback className="bg-secondary text-gold text-sm font-display font-bold">
+          {initials}
+        </AvatarFallback>
+      </Avatar>
+      <div className="flex-1 min-w-0">
+        <p className="font-ui font-semibold text-sm text-foreground truncate">
+          {profile?.username ?? (
+            <span className="text-muted-foreground font-mono text-xs">
+              {artistId.toString().slice(0, 12)}…
+            </span>
+          )}
+        </p>
+      </div>
+      <Button
+        type="button"
+        variant="outline"
+        size="sm"
+        onClick={handleUnfollow}
+        disabled={unfollowMutation.isPending}
+        data-ocid={`profile.unfollow.button.${index + 1}`}
+        className="shrink-0 gap-1.5 font-ui text-xs border-destructive/30 text-destructive hover:bg-destructive/10 hover:border-destructive/50 h-7 px-2.5"
+      >
+        {unfollowMutation.isPending ? (
+          <Loader2 className="h-3 w-3 animate-spin" />
+        ) : (
+          <UserX className="h-3 w-3" />
+        )}
+        Unfollow
+      </Button>
+    </motion.div>
+  );
+}
+
+/* ── Fan Request Card (with reply) ───────────────── */
+function FanRequestCard({
+  request,
+  index,
+}: {
+  request: MusicRequest;
+  index: number;
+}) {
+  const [replyOpen, setReplyOpen] = useState(false);
+  const [replyText, setReplyText] = useState("");
+  const replyMutation = useReplyToRequest();
+  const { data: existingReply } = useRequestReply(request.id);
+
+  const fromStr = request.fromUserId.toString();
+  const shortPrincipal = `${fromStr.slice(0, 8)}…${fromStr.slice(-4)}`;
+
+  const handleSendReply = async () => {
+    const trimmed = replyText.trim();
+    if (!trimmed) return;
+    try {
+      await replyMutation.mutateAsync({
+        requestId: request.id,
+        replyText: trimmed,
+      });
+      toast.success("Reply sent!");
+      setReplyText("");
+      setReplyOpen(false);
+    } catch {
+      toast.error("Failed to send reply");
+    }
+  };
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, x: -8 }}
+      animate={{ opacity: 1, x: 0 }}
+      transition={{ delay: index * 0.05 }}
+      data-ocid={`profile.fan_requests.item.${index + 1}`}
+      className="rounded-xl border border-border bg-secondary/30 p-4 space-y-3"
+    >
+      {/* Header */}
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2">
+          <div className="h-7 w-7 rounded-full bg-gold/10 border border-gold/20 flex items-center justify-center shrink-0">
+            <MessageSquare className="h-3.5 w-3.5 text-gold" />
+          </div>
+          <span className="text-xs font-ui text-muted-foreground font-mono">
+            {shortPrincipal}
+          </span>
+        </div>
+        <span className="text-xs text-muted-foreground/60 font-ui shrink-0">
+          {timeAgo(request.timestamp)}
+        </span>
+      </div>
+
+      {/* Message */}
+      <p className="text-sm font-ui text-foreground/90 leading-relaxed pl-9">
+        {request.message}
+      </p>
+
+      {/* Existing reply display */}
+      {existingReply && (
+        <div className="ml-9 rounded-lg border border-gold/20 bg-gold/5 px-3 py-2.5 space-y-1">
+          <div className="flex items-center gap-1.5">
+            <CornerDownRight className="h-3 w-3 text-gold shrink-0" />
+            <span className="text-xs text-gold font-ui font-semibold">
+              Your Reply · {timeAgo(existingReply.timestamp)}
+            </span>
+          </div>
+          <p className="text-sm text-foreground/80 font-ui leading-relaxed">
+            {existingReply.replyText}
+          </p>
+        </div>
+      )}
+
+      {/* Reply form */}
+      {replyOpen && (
+        <div className="ml-9 space-y-2">
+          <Textarea
+            value={replyText}
+            onChange={(e) => setReplyText(e.target.value)}
+            placeholder="Write your reply…"
+            rows={2}
+            maxLength={500}
+            data-ocid={`profile.reply.textarea.${index + 1}`}
+            className="resize-none bg-secondary/50 border-border text-sm font-ui placeholder:text-muted-foreground/50 focus-visible:ring-gold/40 focus-visible:border-gold/30"
+          />
+          <div className="flex items-center gap-2">
+            <Button
+              type="button"
+              size="sm"
+              disabled={!replyText.trim() || replyMutation.isPending}
+              onClick={handleSendReply}
+              data-ocid={`profile.reply.submit_button.${index + 1}`}
+              className="bg-gold/15 text-gold hover:bg-gold/25 border border-gold/25 font-ui font-semibold h-7 px-3 text-xs"
+            >
+              {replyMutation.isPending ? (
+                <Loader2 className="h-3 w-3 animate-spin" />
+              ) : (
+                "Send Reply"
+              )}
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() => {
+                setReplyOpen(false);
+                setReplyText("");
+              }}
+              className="h-7 px-2 text-xs text-muted-foreground font-ui hover:text-foreground"
+            >
+              Cancel
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {/* Reply button */}
+      {!replyOpen && (
+        <div className="flex justify-end pl-9">
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={() => setReplyOpen(true)}
+            data-ocid={`profile.fan_requests.reply.button.${index + 1}`}
+            className="h-7 px-2.5 gap-1.5 text-xs font-ui text-muted-foreground hover:text-gold hover:bg-gold/10"
+          >
+            <CornerDownRight className="h-3 w-3" />
+            {existingReply ? "Edit Reply" : "Reply"}
+          </Button>
+        </div>
+      )}
+    </motion.div>
+  );
+}
+
+/* ── Following Panel ──────────────────────────────── */
+function FollowingPanel() {
+  const [open, setOpen] = useState(false);
+  const { data: followedArtists, isLoading } = useCallerFollowingList();
+  const count = followedArtists?.length ?? 0;
+
+  return (
+    <Collapsible open={open} onOpenChange={setOpen}>
+      <CollapsibleTrigger asChild>
+        <button
+          type="button"
+          data-ocid="profile.following.panel"
+          className="w-full flex items-center justify-between rounded-xl border border-border bg-card px-4 py-3 hover:border-gold/20 transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold/50"
+        >
+          <div className="flex items-center gap-3">
+            <div className="h-8 w-8 rounded-lg bg-gold/10 border border-gold/20 flex items-center justify-center shrink-0">
+              <Users className="h-4 w-4 text-gold" />
+            </div>
+            <div className="text-left">
+              <p className="font-display font-bold text-sm text-foreground">
+                Following
+              </p>
+              <p className="text-xs text-muted-foreground font-ui">
+                Artists you follow
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            {count > 0 && (
+              <span className="text-xs font-ui font-semibold text-gold bg-gold/10 border border-gold/20 rounded-full px-2 py-0.5">
+                {count}
+              </span>
+            )}
+            <ChevronDown
+              className="h-4 w-4 text-muted-foreground transition-transform duration-200"
+              style={{ transform: open ? "rotate(180deg)" : "rotate(0deg)" }}
+            />
+          </div>
+        </button>
+      </CollapsibleTrigger>
+
+      <CollapsibleContent>
+        <div className="mt-3 space-y-2">
+          {isLoading ? (
+            <div className="space-y-2">
+              {[1, 2].map((i) => (
+                <div
+                  key={i}
+                  className="flex items-center gap-3 rounded-xl border border-border bg-secondary/30 p-3"
+                >
+                  <Skeleton className="h-9 w-9 rounded-full shrink-0" />
+                  <Skeleton className="h-4 w-32 flex-1" />
+                  <Skeleton className="h-7 w-20 shrink-0" />
+                </div>
+              ))}
+            </div>
+          ) : !followedArtists || followedArtists.length === 0 ? (
+            <div
+              className="rounded-xl border border-border bg-card p-6 text-center"
+              data-ocid="profile.following.empty_state"
+            >
+              <Users className="h-8 w-8 text-muted-foreground/40 mx-auto mb-2" />
+              <p className="text-sm font-ui text-muted-foreground">
+                You're not following anyone yet
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {followedArtists.map((artistId, i) => (
+                <FollowingRow
+                  key={artistId.toString()}
+                  artistId={artistId}
+                  index={i}
+                />
+              ))}
+            </div>
+          )}
+        </div>
+      </CollapsibleContent>
+    </Collapsible>
+  );
+}
+
+/* ── Fan Requests Panel (profile version) ─────────── */
+function ProfileFanRequestsPanel() {
+  const [open, setOpen] = useState(false);
+  const { data: requests, isLoading } = useMyMusicRequests();
+  const count = requests?.length ?? 0;
+
+  return (
+    <Collapsible open={open} onOpenChange={setOpen}>
+      <CollapsibleTrigger asChild>
+        <button
+          type="button"
+          data-ocid="profile.fan_requests.panel"
+          className="w-full flex items-center justify-between rounded-xl border border-border bg-card px-4 py-3 hover:border-gold/20 transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold/50"
+        >
+          <div className="flex items-center gap-3">
+            <div className="h-8 w-8 rounded-lg bg-gold/10 border border-gold/20 flex items-center justify-center shrink-0">
+              <MessageSquare className="h-4 w-4 text-gold" />
+            </div>
+            <div className="text-left">
+              <p className="font-display font-bold text-sm text-foreground">
+                Fan Requests
+              </p>
+              <p className="text-xs text-muted-foreground font-ui">
+                Music requests from your fans — reply directly
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            {count > 0 && (
+              <span className="text-xs font-ui font-semibold text-gold bg-gold/10 border border-gold/20 rounded-full px-2 py-0.5">
+                {count}
+              </span>
+            )}
+            <ChevronDown
+              className="h-4 w-4 text-muted-foreground transition-transform duration-200"
+              style={{ transform: open ? "rotate(180deg)" : "rotate(0deg)" }}
+            />
+          </div>
+        </button>
+      </CollapsibleTrigger>
+
+      <CollapsibleContent>
+        <div className="mt-3 space-y-2">
+          {isLoading ? (
+            <div
+              className="space-y-2"
+              data-ocid="profile.fan_requests.loading_state"
+            >
+              {[1, 2].map((i) => (
+                <div
+                  key={i}
+                  className="rounded-xl border border-border bg-secondary/30 p-4 space-y-2"
+                >
+                  <div className="flex items-center gap-2">
+                    <Skeleton className="h-7 w-7 rounded-full" />
+                    <Skeleton className="h-3 w-24" />
+                  </div>
+                  <Skeleton className="h-4 w-full ml-9" />
+                </div>
+              ))}
+            </div>
+          ) : !requests || requests.length === 0 ? (
+            <div
+              className="rounded-xl border border-border bg-card p-8 text-center"
+              data-ocid="profile.fan_requests.empty_state"
+            >
+              <div className="h-12 w-12 rounded-2xl bg-gold/10 border border-gold/20 flex items-center justify-center mx-auto mb-3">
+                <MessageSquare className="h-5 w-5 text-gold" />
+              </div>
+              <p className="font-display font-bold text-base">
+                No fan requests yet
+              </p>
+              <p className="text-sm text-muted-foreground font-ui mt-1">
+                When fans request music from you, it'll show up here
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {requests.map((req, i) => (
+                <FanRequestCard key={req.id} request={req} index={i} />
+              ))}
+            </div>
+          )}
+        </div>
+      </CollapsibleContent>
+    </Collapsible>
+  );
+}
+
+/* ── Main Profile Page ────────────────────────────── */
 export function ProfilePage() {
   const { identity } = useInternetIdentity();
   const { data: profile, isLoading } = useCallerProfile();
   const saveMutation = useSaveProfile();
   const picInputRef = useRef<HTMLInputElement>(null);
   const bannerInputRef = useRef<HTMLInputElement>(null);
+
+  // Stats
+  const { data: followerCount } = useCallerFollowerCount();
+  const { data: followedArtists } = useCallerFollowingList();
+  const followingCount = followedArtists?.length ?? 0;
+  const followerNum = followerCount ? Number(followerCount) : 0;
 
   const [username, setUsername] = useState("");
   const [picFile, setPicFile] = useState<File | null>(null);
@@ -409,6 +836,35 @@ export function ProfilePage() {
             </Button>
           </form>
         )}
+
+        {/* ── Stats Bar ─────────────────────────────────── */}
+        <div
+          className="grid grid-cols-2 gap-3"
+          data-ocid="profile.followers.panel"
+        >
+          <div className="rounded-xl border border-border bg-card px-4 py-3 flex flex-col items-center gap-1">
+            <span className="text-2xl font-display font-black text-gold">
+              {followerNum.toLocaleString()}
+            </span>
+            <span className="text-xs text-muted-foreground font-ui font-semibold uppercase tracking-wider">
+              Followers
+            </span>
+          </div>
+          <div className="rounded-xl border border-border bg-card px-4 py-3 flex flex-col items-center gap-1">
+            <span className="text-2xl font-display font-black text-foreground">
+              {followingCount.toLocaleString()}
+            </span>
+            <span className="text-xs text-muted-foreground font-ui font-semibold uppercase tracking-wider">
+              Following
+            </span>
+          </div>
+        </div>
+
+        {/* ── Following Section ──────────────────────────── */}
+        <FollowingPanel />
+
+        {/* ── Fan Requests Section ───────────────────────── */}
+        <ProfileFanRequestsPanel />
       </motion.div>
     </main>
   );

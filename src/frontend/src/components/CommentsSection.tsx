@@ -2,7 +2,13 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
 import type { Principal } from "@icp-sdk/core/principal";
-import { Loader2, LogIn, MessageCircle, Trash2 } from "lucide-react";
+import {
+  CornerDownRight,
+  Loader2,
+  LogIn,
+  MessageCircle,
+  Trash2,
+} from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { useRef, useState } from "react";
 import { toast } from "sonner";
@@ -10,8 +16,10 @@ import type { Comment } from "../backend.d";
 import { useInternetIdentity } from "../hooks/useInternetIdentity";
 import {
   useAddComment,
+  useCommentReplies,
   useComments,
   useDeleteComment,
+  useReplyToComment,
   useUserProfile,
 } from "../hooks/useQueries";
 
@@ -34,22 +42,68 @@ function timeAgo(timestampNs: bigint): string {
   return `${Math.floor(months / 12)}y ago`;
 }
 
+/* ── Reply row ──────────────────────────────────────── */
+function ReplyRow({
+  authorId,
+  text,
+  timestamp,
+}: {
+  authorId: Principal;
+  text: string;
+  timestamp: bigint;
+}) {
+  const { data: profile } = useUserProfile(authorId);
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 4 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="flex gap-2.5 pl-8"
+    >
+      {/* Indent line */}
+      <div className="flex flex-col items-center">
+        <CornerDownRight className="h-3.5 w-3.5 text-muted-foreground/40 shrink-0 mt-0.5" />
+      </div>
+      <div className="flex-1 min-w-0">
+        <div className="flex items-baseline gap-2 flex-wrap">
+          <span className="text-xs font-ui font-semibold text-foreground/80">
+            {profile?.username ?? "Anonymous"}
+          </span>
+          <span className="text-xs text-muted-foreground/60 font-ui">
+            {timeAgo(timestamp)}
+          </span>
+        </div>
+        <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed break-words">
+          {text}
+        </p>
+      </div>
+    </motion.div>
+  );
+}
+
 /* ── Single comment row ─────────────────────────────── */
 function CommentRow({
   comment,
   index,
   currentPrincipal,
   trackId,
+  isAuthenticated,
 }: {
   comment: Comment;
   index: number;
   currentPrincipal: string | undefined;
   trackId: string;
+  isAuthenticated: boolean;
 }) {
   const { data: profile } = useUserProfile(comment.authorId as Principal);
   const deleteMutation = useDeleteComment(trackId);
+  const replyMutation = useReplyToComment(comment.id, trackId);
+  const { data: replies } = useCommentReplies(comment.id);
+
   const isOwner = currentPrincipal === comment.authorId.toString();
   const ocidIndex = index + 1;
+
+  const [replyOpen, setReplyOpen] = useState(false);
+  const [replyText, setReplyText] = useState("");
 
   const handleDelete = async () => {
     try {
@@ -60,6 +114,25 @@ function CommentRow({
     }
   };
 
+  const handleReplySubmit = async () => {
+    const trimmed = replyText.trim();
+    if (!trimmed) return;
+    try {
+      await replyMutation.mutateAsync(trimmed);
+      toast.success("Reply posted!");
+      setReplyText("");
+      setReplyOpen(false);
+    } catch {
+      toast.error("Failed to post reply");
+    }
+  };
+
+  const handleReplyKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
+      void handleReplySubmit();
+    }
+  };
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 6 }}
@@ -67,44 +140,119 @@ function CommentRow({
       exit={{ opacity: 0, y: -4 }}
       transition={{ duration: 0.2 }}
       data-ocid={`comments.item.${ocidIndex}`}
-      className="flex gap-3 group/comment"
+      className="space-y-2"
     >
-      {/* Avatar */}
-      <div className="h-7 w-7 rounded-full bg-secondary border border-border flex items-center justify-center shrink-0 text-xs font-display font-bold text-muted-foreground">
-        {profile?.username ? profile.username[0]?.toUpperCase() : "?"}
-      </div>
-
-      {/* Content */}
-      <div className="flex-1 min-w-0">
-        <div className="flex items-baseline gap-2 flex-wrap">
-          <span className="text-sm font-ui font-semibold text-foreground">
-            {profile?.username ?? "Anonymous"}
-          </span>
-          <span className="text-xs text-muted-foreground font-ui">
-            {timeAgo(comment.timestamp)}
-          </span>
+      {/* Main comment */}
+      <div className="flex gap-3 group/comment">
+        {/* Avatar */}
+        <div className="h-7 w-7 rounded-full bg-secondary border border-border flex items-center justify-center shrink-0 text-xs font-display font-bold text-muted-foreground">
+          {profile?.username ? profile.username[0]?.toUpperCase() : "?"}
         </div>
-        <p className="text-sm text-muted-foreground mt-0.5 leading-relaxed break-words">
-          {comment.text}
-        </p>
+
+        {/* Content */}
+        <div className="flex-1 min-w-0">
+          <div className="flex items-baseline gap-2 flex-wrap">
+            <span className="text-sm font-ui font-semibold text-foreground">
+              {profile?.username ?? "Anonymous"}
+            </span>
+            <span className="text-xs text-muted-foreground font-ui">
+              {timeAgo(comment.timestamp)}
+            </span>
+          </div>
+          <p className="text-sm text-muted-foreground mt-0.5 leading-relaxed break-words">
+            {comment.text}
+          </p>
+
+          {/* Reply button */}
+          {isAuthenticated && (
+            <button
+              type="button"
+              onClick={() => {
+                setReplyOpen((v) => !v);
+                setReplyText("");
+              }}
+              data-ocid={`comments.reply_button.${ocidIndex}`}
+              className="mt-1 flex items-center gap-1 text-xs text-muted-foreground/60 hover:text-gold font-ui transition-colors duration-150"
+            >
+              <CornerDownRight className="h-3 w-3" />
+              Reply
+            </button>
+          )}
+        </div>
+
+        {/* Delete button */}
+        {isOwner && (
+          <button
+            type="button"
+            onClick={handleDelete}
+            disabled={deleteMutation.isPending}
+            aria-label="Delete comment"
+            data-ocid={`comments.delete_button.${ocidIndex}`}
+            className="shrink-0 opacity-0 group-hover/comment:opacity-100 transition-opacity duration-150 h-6 w-6 rounded flex items-center justify-center text-muted-foreground hover:text-destructive hover:bg-destructive/10 disabled:opacity-40"
+          >
+            {deleteMutation.isPending ? (
+              <Loader2 className="h-3 w-3 animate-spin" />
+            ) : (
+              <Trash2 className="h-3 w-3" />
+            )}
+          </button>
+        )}
       </div>
 
-      {/* Delete button */}
-      {isOwner && (
-        <button
-          type="button"
-          onClick={handleDelete}
-          disabled={deleteMutation.isPending}
-          aria-label="Delete comment"
-          data-ocid={`comments.delete_button.${ocidIndex}`}
-          className="shrink-0 opacity-0 group-hover/comment:opacity-100 transition-opacity duration-150 h-6 w-6 rounded flex items-center justify-center text-muted-foreground hover:text-destructive hover:bg-destructive/10 disabled:opacity-40"
-        >
-          {deleteMutation.isPending ? (
-            <Loader2 className="h-3 w-3 animate-spin" />
-          ) : (
-            <Trash2 className="h-3 w-3" />
-          )}
-        </button>
+      {/* Existing replies */}
+      {replies && replies.length > 0 && (
+        <div className="space-y-2">
+          {replies.map((reply) => (
+            <ReplyRow
+              key={reply.id}
+              authorId={reply.authorId as Principal}
+              text={reply.text}
+              timestamp={reply.timestamp}
+            />
+          ))}
+        </div>
+      )}
+
+      {/* Inline reply form */}
+      {replyOpen && (
+        <div className="pl-8 space-y-2">
+          <Textarea
+            value={replyText}
+            onChange={(e) => setReplyText(e.target.value)}
+            onKeyDown={handleReplyKeyDown}
+            placeholder="Write a reply… (⌘↵ to post)"
+            rows={2}
+            maxLength={500}
+            data-ocid={`comments.reply.textarea.${ocidIndex}`}
+            className="resize-none bg-secondary/50 border-border text-xs font-ui placeholder:text-muted-foreground/50 focus-visible:ring-gold/40 focus-visible:border-gold/30 transition-colors"
+          />
+          <div className="flex items-center gap-2">
+            <Button
+              type="button"
+              size="sm"
+              disabled={!replyText.trim() || replyMutation.isPending}
+              onClick={handleReplySubmit}
+              data-ocid={`comments.reply.submit_button.${ocidIndex}`}
+              className="bg-gold/15 text-gold hover:bg-gold/25 border border-gold/25 font-ui font-semibold h-6 px-2.5 text-xs"
+            >
+              {replyMutation.isPending ? (
+                <Loader2 className="h-3 w-3 animate-spin" />
+              ) : (
+                "Post Reply"
+              )}
+            </Button>
+            <button
+              type="button"
+              onClick={() => {
+                setReplyOpen(false);
+                setReplyText("");
+              }}
+              className="text-xs text-muted-foreground/60 hover:text-foreground font-ui transition-colors"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
       )}
     </motion.div>
   );
@@ -189,7 +337,7 @@ export function CommentsSection({ trackId }: CommentsSectionProps) {
         </motion.p>
       ) : (
         <AnimatePresence initial={false}>
-          <div className="space-y-3">
+          <div className="space-y-4">
             {comments.map((comment, i) => (
               <CommentRow
                 key={comment.id}
@@ -197,6 +345,7 @@ export function CommentsSection({ trackId }: CommentsSectionProps) {
                 index={i}
                 currentPrincipal={currentPrincipal}
                 trackId={trackId}
+                isAuthenticated={isAuthenticated}
               />
             ))}
           </div>

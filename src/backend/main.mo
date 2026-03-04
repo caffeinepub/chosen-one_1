@@ -17,7 +17,6 @@ import List "mo:core/List";
 
 import MixinAuthorization "authorization/MixinAuthorization";
 
-
 actor {
   // Mixin components
   include MixinStorage();
@@ -148,11 +147,40 @@ actor {
     winnerId : ?Principal;
   };
 
+  // Comment reply types
+  type CommentReply = {
+    id : Text;
+    commentId : Text;
+    authorId : Principal;
+    text : Text;
+    timestamp : Int;
+  };
+
+  module CommentReply {
+    public func compareTimestamp(a : CommentReply, b : CommentReply) : Order.Order {
+      Int.compare(a.timestamp, b.timestamp);
+    };
+  };
+
+  // Request reply types
+  type RequestReply = {
+    requestId : Text;
+    artistId : Principal;
+    replyText : Text;
+    timestamp : Int;
+  };
+
   // Store user profiles, tracks, and comments in persistent Maps
   let userProfiles = Map.empty<Principal, UserProfile>();
   let tracks = Map.empty<Text, Track>();
   let comments = Map.empty<Text, Comment>();
   let musicRequests = Map.empty<Text, MusicRequest>();
+
+  // Store comment replies
+  let commentReplies = Map.empty<Text, [CommentReply]>();
+
+  // Store request replies
+  let requestReplies = Map.empty<Text, RequestReply>();
 
   // Store follows in persistent map
   let follows = Map.empty<Principal, [Principal]>();
@@ -514,6 +542,50 @@ actor {
     };
   };
 
+  // Comment replies
+  public shared ({ caller }) func replyToComment(commentId : Text, text : Text) : async () {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can reply to comments");
+    };
+
+    if (text.trim(#predicate(Char.isWhitespace)).size() == 0) {
+      Runtime.trap("Reply text cannot be empty");
+    };
+
+    let timestamp = Time.now();
+    let replyId = commentId # "." # caller.toText() # "." # timestamp.toText();
+
+    let newReply : CommentReply = {
+      id = replyId;
+      commentId;
+      authorId = caller;
+      text;
+      timestamp;
+    };
+
+    let existingReplies = switch (commentReplies.get(commentId)) {
+      case (null) { [] };
+      case (?replies) { replies };
+    };
+
+    commentReplies.add(commentId, existingReplies.concat([ newReply ]));
+  };
+
+  public query func getRepliesForComment(commentId : Text) : async [CommentReply] {
+    switch (commentReplies.get(commentId)) {
+      case (null) { [] };
+      case (?replies) {
+        replies.sort(
+          func(a, b) {
+            let aTime = a.timestamp;
+            let bTime = b.timestamp;
+            if (aTime < bTime) { #less } else if (aTime > bTime) { #greater } else { #equal };
+          }
+        );
+      };
+    };
+  };
+
   // New Like functionality
   public shared ({ caller }) func likeTrack(trackId : Text) : async () {
     if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
@@ -634,6 +706,73 @@ actor {
     );
 
     sentRequests;
+  };
+
+  // Request replies
+  public shared ({ caller }) func replyToMusicRequest(requestId : Text, replyText : Text) : async () {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can reply to music requests");
+    };
+
+    switch (musicRequests.get(requestId)) {
+      case (null) { Runtime.trap("Music request not found") };
+      case (?request) {
+        if (request.toArtistId != caller) {
+          Runtime.trap("Only the artist can reply to this request");
+        };
+
+        let timestamp = Time.now();
+
+        let newRequestReply : RequestReply = {
+          requestId;
+          artistId = caller;
+          replyText;
+          timestamp;
+        };
+
+        requestReplies.add(requestId, newRequestReply);
+      };
+    };
+  };
+
+  public query ({ caller }) func getReplyForRequest(requestId : Text) : async ?RequestReply {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can get request replies");
+    };
+
+    switch (musicRequests.get(requestId)) {
+      case (null) { Runtime.trap("Music request not found") };
+      case (?request) {
+        if (request.fromUserId != caller and request.toArtistId != caller) {
+          Runtime.trap("Unauthorized: Can only view replies for your own requests");
+        };
+        requestReplies.get(requestId);
+      };
+    };
+  };
+
+  public query ({ caller }) func getMyRequestReplies() : async [(MusicRequest, ?RequestReply)] {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can get their request replies");
+    };
+
+    let myRequests = musicRequests.values().toArray().filter(
+      func(request) { request.fromUserId == caller }
+    );
+
+    let pairedRequests = myRequests.map(
+      func(request) {
+        (request, requestReplies.get(request.id));
+      }
+    );
+
+    pairedRequests.sort(
+      func((reqA, _), (reqB, _)) {
+        let timeA = reqA.timestamp;
+        let timeB = reqB.timestamp;
+        if (timeA > timeB) { #less } else if (timeA < timeB) { #greater } else { #equal };
+      }
+    );
   };
 
   // New Follows functionality
@@ -838,7 +977,7 @@ actor {
       defenderTrackId = ?defenderTrackId;
       status = #active;
       acceptedAt = ?acceptedAt;
-      expiresAt = ?(acceptedAt + (Int.abs(nanosecondsPerDay * 7)));
+      expiresAt = ?(acceptedAt + (Int.abs(nanosecondsPerDay*7)));
     };
 
     battles.add(battleId, updatedBattle);

@@ -38,6 +38,13 @@ export interface Comment {
   'trackId' : string,
   'timestamp' : bigint,
 }
+export interface CommentReply {
+  'id' : string,
+  'commentId' : string,
+  'authorId' : Principal,
+  'text' : string,
+  'timestamp' : bigint,
+}
 export type ExternalBlob = Uint8Array;
 export interface MusicRequest {
   'id' : string,
@@ -54,6 +61,12 @@ export interface Notification {
   'fromArtistId' : Principal,
 }
 export interface Rating { 'raterUserId' : Principal, 'score' : bigint }
+export interface RequestReply {
+  'requestId' : string,
+  'artistId' : Principal,
+  'timestamp' : bigint,
+  'replyText' : string,
+}
 export interface Track {
   'id' : string,
   'region' : string,
@@ -130,8 +143,14 @@ export interface _SERVICE {
   'getMyBattles' : ActorMethod<[], Array<Battle>>,
   'getMyMusicRequests' : ActorMethod<[], Array<MusicRequest>>,
   'getMyNotifications' : ActorMethod<[], Array<Notification>>,
+  'getMyRequestReplies' : ActorMethod<
+    [],
+    Array<[MusicRequest, [] | [RequestReply]]>
+  >,
   'getOwnTracks' : ActorMethod<[], Array<Track>>,
   'getPendingBattlesForMe' : ActorMethod<[], Array<Battle>>,
+  'getRepliesForComment' : ActorMethod<[string], Array<CommentReply>>,
+  'getReplyForRequest' : ActorMethod<[string], [] | [RequestReply]>,
   'getTrackAverageRating' : ActorMethod<[string], number>,
   'getTrackById' : ActorMethod<[string], [] | [Track]>,
   'getTracksByOwner' : ActorMethod<[Principal], Array<Track>>,
@@ -150,6 +169,8 @@ export interface _SERVICE {
   'likeTrack' : ActorMethod<[string], undefined>,
   'markNotificationsRead' : ActorMethod<[], undefined>,
   'rateTrack' : ActorMethod<[string, bigint], undefined>,
+  'replyToComment' : ActorMethod<[string, string], undefined>,
+  'replyToMusicRequest' : ActorMethod<[string, string], undefined>,
   'respondToBattle' : ActorMethod<[string, string, boolean], undefined>,
   'saveCallerUserProfile' : ActorMethod<[UserProfile], undefined>,
   'sendMusicRequest' : ActorMethod<[Principal, string], undefined>,

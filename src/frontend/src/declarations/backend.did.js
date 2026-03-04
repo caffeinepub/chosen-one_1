@@ -79,6 +79,12 @@ export const Notification = IDL.Record({
   'timestamp' : IDL.Int,
   'fromArtistId' : IDL.Principal,
 });
+export const RequestReply = IDL.Record({
+  'requestId' : IDL.Text,
+  'artistId' : IDL.Principal,
+  'timestamp' : IDL.Int,
+  'replyText' : IDL.Text,
+});
 export const Rating = IDL.Record({
   'raterUserId' : IDL.Principal,
   'score' : IDL.Nat,
@@ -98,6 +104,13 @@ export const Track = IDL.Record({
   'genre' : IDL.Text,
   'artist' : IDL.Text,
   'coverKey' : IDL.Opt(ExternalBlob),
+});
+export const CommentReply = IDL.Record({
+  'id' : IDL.Text,
+  'commentId' : IDL.Text,
+  'authorId' : IDL.Principal,
+  'text' : IDL.Text,
+  'timestamp' : IDL.Int,
 });
 export const AverageRating = IDL.Record({
   'track' : Track,
@@ -156,8 +169,23 @@ export const idlService = IDL.Service({
   'getMyBattles' : IDL.Func([], [IDL.Vec(Battle)], ['query']),
   'getMyMusicRequests' : IDL.Func([], [IDL.Vec(MusicRequest)], ['query']),
   'getMyNotifications' : IDL.Func([], [IDL.Vec(Notification)], ['query']),
+  'getMyRequestReplies' : IDL.Func(
+      [],
+      [IDL.Vec(IDL.Tuple(MusicRequest, IDL.Opt(RequestReply)))],
+      ['query'],
+    ),
   'getOwnTracks' : IDL.Func([], [IDL.Vec(Track)], ['query']),
   'getPendingBattlesForMe' : IDL.Func([], [IDL.Vec(Battle)], ['query']),
+  'getRepliesForComment' : IDL.Func(
+      [IDL.Text],
+      [IDL.Vec(CommentReply)],
+      ['query'],
+    ),
+  'getReplyForRequest' : IDL.Func(
+      [IDL.Text],
+      [IDL.Opt(RequestReply)],
+      ['query'],
+    ),
   'getTrackAverageRating' : IDL.Func([IDL.Text], [IDL.Float64], ['query']),
   'getTrackById' : IDL.Func([IDL.Text], [IDL.Opt(Track)], ['query']),
   'getTracksByOwner' : IDL.Func([IDL.Principal], [IDL.Vec(Track)], ['query']),
@@ -182,6 +210,8 @@ export const idlService = IDL.Service({
   'likeTrack' : IDL.Func([IDL.Text], [], []),
   'markNotificationsRead' : IDL.Func([], [], []),
   'rateTrack' : IDL.Func([IDL.Text, IDL.Nat], [], []),
+  'replyToComment' : IDL.Func([IDL.Text, IDL.Text], [], []),
+  'replyToMusicRequest' : IDL.Func([IDL.Text, IDL.Text], [], []),
   'respondToBattle' : IDL.Func([IDL.Text, IDL.Text, IDL.Bool], [], []),
   'saveCallerUserProfile' : IDL.Func([UserProfile], [], []),
   'sendMusicRequest' : IDL.Func([IDL.Principal, IDL.Text], [], []),
@@ -280,6 +310,12 @@ export const idlFactory = ({ IDL }) => {
     'timestamp' : IDL.Int,
     'fromArtistId' : IDL.Principal,
   });
+  const RequestReply = IDL.Record({
+    'requestId' : IDL.Text,
+    'artistId' : IDL.Principal,
+    'timestamp' : IDL.Int,
+    'replyText' : IDL.Text,
+  });
   const Rating = IDL.Record({
     'raterUserId' : IDL.Principal,
     'score' : IDL.Nat,
@@ -299,6 +335,13 @@ export const idlFactory = ({ IDL }) => {
     'genre' : IDL.Text,
     'artist' : IDL.Text,
     'coverKey' : IDL.Opt(ExternalBlob),
+  });
+  const CommentReply = IDL.Record({
+    'id' : IDL.Text,
+    'commentId' : IDL.Text,
+    'authorId' : IDL.Principal,
+    'text' : IDL.Text,
+    'timestamp' : IDL.Int,
   });
   const AverageRating = IDL.Record({
     'track' : Track,
@@ -361,8 +404,23 @@ export const idlFactory = ({ IDL }) => {
     'getMyBattles' : IDL.Func([], [IDL.Vec(Battle)], ['query']),
     'getMyMusicRequests' : IDL.Func([], [IDL.Vec(MusicRequest)], ['query']),
     'getMyNotifications' : IDL.Func([], [IDL.Vec(Notification)], ['query']),
+    'getMyRequestReplies' : IDL.Func(
+        [],
+        [IDL.Vec(IDL.Tuple(MusicRequest, IDL.Opt(RequestReply)))],
+        ['query'],
+      ),
     'getOwnTracks' : IDL.Func([], [IDL.Vec(Track)], ['query']),
     'getPendingBattlesForMe' : IDL.Func([], [IDL.Vec(Battle)], ['query']),
+    'getRepliesForComment' : IDL.Func(
+        [IDL.Text],
+        [IDL.Vec(CommentReply)],
+        ['query'],
+      ),
+    'getReplyForRequest' : IDL.Func(
+        [IDL.Text],
+        [IDL.Opt(RequestReply)],
+        ['query'],
+      ),
     'getTrackAverageRating' : IDL.Func([IDL.Text], [IDL.Float64], ['query']),
     'getTrackById' : IDL.Func([IDL.Text], [IDL.Opt(Track)], ['query']),
     'getTracksByOwner' : IDL.Func([IDL.Principal], [IDL.Vec(Track)], ['query']),
@@ -391,6 +449,8 @@ export const idlFactory = ({ IDL }) => {
     'likeTrack' : IDL.Func([IDL.Text], [], []),
     'markNotificationsRead' : IDL.Func([], [], []),
     'rateTrack' : IDL.Func([IDL.Text, IDL.Nat], [], []),
+    'replyToComment' : IDL.Func([IDL.Text, IDL.Text], [], []),
+    'replyToMusicRequest' : IDL.Func([IDL.Text, IDL.Text], [], []),
     'respondToBattle' : IDL.Func([IDL.Text, IDL.Text, IDL.Bool], [], []),
     'saveCallerUserProfile' : IDL.Func([UserProfile], [], []),
     'sendMusicRequest' : IDL.Func([IDL.Principal, IDL.Text], [], []),

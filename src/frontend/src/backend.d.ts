@@ -14,12 +14,6 @@ export class ExternalBlob {
     static fromBytes(blob: Uint8Array<ArrayBuffer>): ExternalBlob;
     withUploadProgress(onProgress: (percentage: number) => void): ExternalBlob;
 }
-export interface UserProfile {
-    profilePicKey?: ExternalBlob;
-    username: string;
-    bgStyle: string;
-    bannerKey?: ExternalBlob;
-}
 export interface BattleVote {
     side: BattleSide;
     voterId: Principal;
@@ -62,6 +56,19 @@ export interface AverageRating {
     track: Track;
     averageRating: number;
 }
+export interface RequestReply {
+    requestId: string;
+    artistId: Principal;
+    timestamp: bigint;
+    replyText: string;
+}
+export interface CommentReply {
+    id: string;
+    commentId: string;
+    authorId: Principal;
+    text: string;
+    timestamp: bigint;
+}
 export interface Notification {
     id: string;
     trackTitle: string;
@@ -81,6 +88,12 @@ export interface Battle {
     defenderId: Principal;
     challengerId: Principal;
     acceptedAt?: bigint;
+}
+export interface UserProfile {
+    profilePicKey?: ExternalBlob;
+    username: string;
+    bgStyle: string;
+    bannerKey?: ExternalBlob;
 }
 export enum BattleSide {
     challenger = "challenger",
@@ -118,8 +131,11 @@ export interface backendInterface {
     getMyBattles(): Promise<Array<Battle>>;
     getMyMusicRequests(): Promise<Array<MusicRequest>>;
     getMyNotifications(): Promise<Array<Notification>>;
+    getMyRequestReplies(): Promise<Array<[MusicRequest, RequestReply | null]>>;
     getOwnTracks(): Promise<Array<Track>>;
     getPendingBattlesForMe(): Promise<Array<Battle>>;
+    getRepliesForComment(commentId: string): Promise<Array<CommentReply>>;
+    getReplyForRequest(requestId: string): Promise<RequestReply | null>;
     getTrackAverageRating(id: string): Promise<number>;
     getTrackById(id: string): Promise<Track | null>;
     getTracksByOwner(owner: Principal): Promise<Array<Track>>;
@@ -132,6 +148,8 @@ export interface backendInterface {
     likeTrack(trackId: string): Promise<void>;
     markNotificationsRead(): Promise<void>;
     rateTrack(trackId: string, score: bigint): Promise<void>;
+    replyToComment(commentId: string, text: string): Promise<void>;
+    replyToMusicRequest(requestId: string, replyText: string): Promise<void>;
     respondToBattle(battleId: string, defenderTrackId: string, accept: boolean): Promise<void>;
     saveCallerUserProfile(profile: UserProfile): Promise<void>;
     sendMusicRequest(toArtistId: Principal, message: string): Promise<void>;

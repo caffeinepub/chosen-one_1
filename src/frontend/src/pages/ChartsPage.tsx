@@ -32,6 +32,7 @@ import {
   Play,
   PlayCircle,
   Send,
+  Share2,
   TrendingUp,
   Users,
 } from "lucide-react";
@@ -40,6 +41,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 import type { AverageRating } from "../backend.d";
 import { CommentsSection } from "../components/CommentsSection";
+import { ShareModal } from "../components/ShareModal";
 import { StarRating } from "../components/StarRating";
 import { type QueueTrack, usePlayer } from "../contexts/PlayerContext";
 import { useGlobalListeners } from "../hooks/useGlobalListeners";
@@ -184,6 +186,7 @@ function TrackCard({
   const [userRating, setUserRating] = useState(0);
   const [requestOpen, setRequestOpen] = useState(false);
   const [requestMessage, setRequestMessage] = useState("");
+  const [shareOpen, setShareOpen] = useState(false);
   const { identity } = useInternetIdentity();
   const isAuthenticated = !!identity;
   const callerPrincipal = identity?.getPrincipal().toString();
@@ -441,6 +444,21 @@ function TrackCard({
               </button>
             )}
 
+            {/* Share button */}
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                setShareOpen(true);
+              }}
+              data-ocid="track.share.open_modal_button"
+              aria-label="Share this track"
+              className="flex items-center gap-1 rounded-lg px-2 py-1.5 text-xs font-ui font-semibold text-muted-foreground hover:text-gold hover:bg-gold/10 transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold/50"
+            >
+              <Share2 className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">Share</span>
+            </button>
+
             {/* Play / Pause button */}
             <button
               type="button"
@@ -532,6 +550,14 @@ function TrackCard({
           )}
         </AnimatePresence>
       </div>
+
+      {/* Share Modal */}
+      <ShareModal
+        open={shareOpen}
+        onOpenChange={setShareOpen}
+        url={`${window.location.origin}/artist/${track.ownerId.toString()}`}
+        title={`${track.title} by ${track.artist} on Chosen One`}
+      />
 
       {/* Request Music Dialog */}
       <Dialog open={requestOpen} onOpenChange={setRequestOpen}>

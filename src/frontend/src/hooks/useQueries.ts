@@ -6,12 +6,15 @@ import type {
   Battle,
   BattleSide,
   Comment,
+  CommentReply,
   MusicRequest,
   Notification,
+  RequestReply,
   Track,
   UserProfile,
 } from "../backend.d";
 import { useActor } from "./useActor";
+import { useInternetIdentity } from "./useInternetIdentity";
 
 /* ── Charts ──────────────────────────────────────────── */
 export function useCharts() {
@@ -660,5 +663,108 @@ export function useFinalizeBattle() {
       void qc.invalidateQueries({ queryKey: ["active-battles"] });
       void qc.invalidateQueries({ queryKey: ["my-battles"] });
     },
+  });
+}
+
+/* ── Comment Replies ─────────────────────────────────── */
+export function useCommentReplies(commentId: string) {
+  const { actor, isFetching } = useActor();
+  return useQuery<CommentReply[]>({
+    queryKey: ["comment-replies", commentId],
+    queryFn: async () => {
+      if (!actor) return [];
+      return actor.getRepliesForComment(commentId);
+    },
+    enabled: !!actor && !isFetching && !!commentId,
+  });
+}
+
+export function useReplyToComment(commentId: string, trackId: string) {
+  const { actor } = useActor();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (text: string) => {
+      if (!actor) throw new Error("Not authenticated");
+      await actor.replyToComment(commentId, text);
+    },
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ["comment-replies", commentId] });
+      void qc.invalidateQueries({ queryKey: ["comments", trackId] });
+    },
+  });
+}
+
+/* ── Request Replies ─────────────────────────────────── */
+export function useReplyToRequest() {
+  const { actor } = useActor();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      requestId,
+      replyText,
+    }: {
+      requestId: string;
+      replyText: string;
+    }) => {
+      if (!actor) throw new Error("Not authenticated");
+      await actor.replyToMusicRequest(requestId, replyText);
+    },
+    onSuccess: (_data, { requestId }) => {
+      void qc.invalidateQueries({ queryKey: ["my-music-requests"] });
+      void qc.invalidateQueries({ queryKey: ["request-reply", requestId] });
+      void qc.invalidateQueries({ queryKey: ["my-request-replies"] });
+    },
+  });
+}
+
+export function useRequestReply(requestId: string) {
+  const { actor, isFetching } = useActor();
+  return useQuery<RequestReply | null>({
+    queryKey: ["request-reply", requestId],
+    queryFn: async () => {
+      if (!actor) return null;
+      return actor.getReplyForRequest(requestId);
+    },
+    enabled: !!actor && !isFetching && !!requestId,
+  });
+}
+
+export function useMyRequestReplies() {
+  const { actor, isFetching } = useActor();
+  return useQuery<Array<[MusicRequest, RequestReply | null]>>({
+    queryKey: ["my-request-replies"],
+    queryFn: async () => {
+      if (!actor) return [];
+      return actor.getMyRequestReplies();
+    },
+    enabled: !!actor && !isFetching,
+  });
+}
+
+/* ── Caller Follower Count ───────────────────────────── */
+export function useCallerFollowerCount() {
+  const { actor, isFetching } = useActor();
+  const { identity } = useInternetIdentity();
+  const callerPrincipal = identity?.getPrincipal();
+  return useQuery<bigint>({
+    queryKey: ["follower-count", callerPrincipal?.toString()],
+    queryFn: async () => {
+      if (!actor || !callerPrincipal) return BigInt(0);
+      return actor.getFollowerCount(callerPrincipal);
+    },
+    enabled: !!actor && !isFetching && !!callerPrincipal,
+  });
+}
+
+/* ── Caller Following List ───────────────────────────── */
+export function useCallerFollowingList() {
+  const { actor, isFetching } = useActor();
+  return useQuery<Principal[]>({
+    queryKey: ["followed-artists"],
+    queryFn: async () => {
+      if (!actor) return [];
+      return actor.getFollowedArtists();
+    },
+    enabled: !!actor && !isFetching,
   });
 }

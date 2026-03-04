@@ -16,8 +16,10 @@ import {
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Textarea } from "@/components/ui/textarea";
 import {
   ChevronDown,
+  CornerDownRight,
   Heart,
   Loader2,
   MessageSquare,
@@ -36,6 +38,8 @@ import {
   useLikeTrack,
   useMyMusicRequests,
   useOwnTracks,
+  useReplyToRequest,
+  useRequestReply,
 } from "../hooks/useQueries";
 
 /** Format a bigint nanosecond timestamp as a relative date string */
@@ -63,14 +67,36 @@ function FanRequestCard({
   const fromStr = request.fromUserId.toString();
   const shortPrincipal = `${fromStr.slice(0, 8)}…${fromStr.slice(-4)}`;
 
+  const [replyOpen, setReplyOpen] = useState(false);
+  const [replyText, setReplyText] = useState("");
+  const replyMutation = useReplyToRequest();
+  const { data: existingReply } = useRequestReply(request.id);
+
+  const handleSendReply = async () => {
+    const trimmed = replyText.trim();
+    if (!trimmed) return;
+    try {
+      await replyMutation.mutateAsync({
+        requestId: request.id,
+        replyText: trimmed,
+      });
+      toast.success("Reply sent!");
+      setReplyText("");
+      setReplyOpen(false);
+    } catch {
+      toast.error("Failed to send reply");
+    }
+  };
+
   return (
     <motion.div
       initial={{ opacity: 0, x: -8 }}
       animate={{ opacity: 1, x: 0 }}
       transition={{ delay: index * 0.05 }}
       data-ocid={`my_tracks.requests.item.${index + 1}`}
-      className="rounded-xl border border-border bg-secondary/30 p-4 space-y-2"
+      className="rounded-xl border border-border bg-secondary/30 p-4 space-y-3"
     >
+      {/* Header */}
       <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-2">
           <div className="h-7 w-7 rounded-full bg-gold/10 border border-gold/20 flex items-center justify-center shrink-0">
@@ -84,9 +110,86 @@ function FanRequestCard({
           {formatRelativeTime(request.timestamp)}
         </span>
       </div>
+
+      {/* Message */}
       <p className="text-sm font-ui text-foreground/90 leading-relaxed pl-9">
         {request.message}
       </p>
+
+      {/* Existing reply */}
+      {existingReply && (
+        <div className="ml-9 rounded-lg border border-gold/20 bg-gold/5 px-3 py-2.5 space-y-1">
+          <div className="flex items-center gap-1.5">
+            <CornerDownRight className="h-3 w-3 text-gold shrink-0" />
+            <span className="text-xs text-gold font-ui font-semibold">
+              Your Reply · {formatRelativeTime(existingReply.timestamp)}
+            </span>
+          </div>
+          <p className="text-sm text-foreground/80 font-ui leading-relaxed">
+            {existingReply.replyText}
+          </p>
+        </div>
+      )}
+
+      {/* Reply form */}
+      {replyOpen && (
+        <div className="ml-9 space-y-2">
+          <Textarea
+            value={replyText}
+            onChange={(e) => setReplyText(e.target.value)}
+            placeholder="Write your reply…"
+            rows={2}
+            maxLength={500}
+            data-ocid={`my_tracks.request_reply.textarea.${index + 1}`}
+            className="resize-none bg-secondary/50 border-border text-sm font-ui placeholder:text-muted-foreground/50 focus-visible:ring-gold/40 focus-visible:border-gold/30"
+          />
+          <div className="flex items-center gap-2">
+            <Button
+              type="button"
+              size="sm"
+              disabled={!replyText.trim() || replyMutation.isPending}
+              onClick={handleSendReply}
+              data-ocid={`my_tracks.request_reply.submit_button.${index + 1}`}
+              className="bg-gold/15 text-gold hover:bg-gold/25 border border-gold/25 font-ui font-semibold h-7 px-3 text-xs"
+            >
+              {replyMutation.isPending ? (
+                <Loader2 className="h-3 w-3 animate-spin" />
+              ) : (
+                "Send Reply"
+              )}
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() => {
+                setReplyOpen(false);
+                setReplyText("");
+              }}
+              className="h-7 px-2 text-xs text-muted-foreground font-ui hover:text-foreground"
+            >
+              Cancel
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {/* Reply toggle button */}
+      {!replyOpen && (
+        <div className="flex justify-end">
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={() => setReplyOpen(true)}
+            data-ocid={`my_tracks.request_reply.button.${index + 1}`}
+            className="h-7 px-2.5 gap-1.5 text-xs font-ui text-muted-foreground hover:text-gold hover:bg-gold/10"
+          >
+            <CornerDownRight className="h-3 w-3" />
+            {existingReply ? "Edit Reply" : "Reply"}
+          </Button>
+        </div>
+      )}
     </motion.div>
   );
 }
