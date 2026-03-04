@@ -8,14 +8,14 @@ import Iter "mo:core/Iter";
 import Text "mo:core/Text";
 import Nat "mo:core/Nat";
 import Char "mo:core/Char";
+import Int "mo:core/Int";
 import Storage "blob-storage/Storage";
 import MixinStorage "blob-storage/Mixin";
 import AccessControl "authorization/access-control";
 import Float "mo:core/Float";
-import Int "mo:core/Int";
-import MixinAuthorization "authorization/MixinAuthorization";
-
 import List "mo:core/List";
+
+import MixinAuthorization "authorization/MixinAuthorization";
 
 
 actor {
@@ -116,6 +116,38 @@ actor {
     timestamp : Int;
   };
 
+  // Battle system types
+  type BattleSide = {
+    #challenger;
+    #defender;
+  };
+
+  type BattleVote = {
+    voterId : Principal;
+    side : BattleSide;
+  };
+
+  type BattleStatus = {
+    #pending;
+    #active;
+    #completed;
+    #declined;
+  };
+
+  type Battle = {
+    id : Text;
+    challengerId : Principal;
+    defenderId : Principal;
+    challengerTrackId : Text;
+    defenderTrackId : ?Text;
+    status : BattleStatus;
+    votes : [BattleVote];
+    createdAt : Int;
+    acceptedAt : ?Int;
+    expiresAt : ?Int;
+    winnerId : ?Principal;
+  };
+
   // Store user profiles, tracks, and comments in persistent Maps
   let userProfiles = Map.empty<Principal, UserProfile>();
   let tracks = Map.empty<Text, Track>();
@@ -127,6 +159,9 @@ actor {
 
   // Store notifications in persistent map
   let notifications = Map.empty<Principal, [Notification]>();
+
+  // Store battles in persistent map
+  let battles = Map.empty<Text, Battle>();
 
   // Profile management
   public shared ({ caller }) func createOrUpdateProfile(
@@ -699,5 +734,255 @@ actor {
       Runtime.trap("Unauthorized: Only users can mark notifications as read");
     };
     notifications.remove(caller);
+  };
+
+  // BATTLE SYSTEM
+
+  // Helper function to check existing open battles between two users
+  func hasOpenBattle(challenger : Principal, defender : Principal) : Bool {
+    for (battle in battles.values()) {
+      if (
+        (
+          (battle.challengerId == challenger and battle.defenderId == defender) or
+          (battle.challengerId == defender and battle.defenderId == challenger)
+        ) and
+        (battle.status == #pending or battle.status == #active)
+      ) {
+        return true;
+      };
+    };
+    false;
+  };
+
+  // 1. Create Battle
+  public shared ({ caller }) func createBattle(defenderArtistId : Principal, challengerTrackId : Text) : async Text {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can create battles");
+    };
+
+    if (caller == defenderArtistId) {
+      Runtime.trap("Cannot battle yourself");
+    };
+
+    let challengerTrack = switch (tracks.get(challengerTrackId)) {
+      case (null) { Runtime.trap("Challenger track not found") };
+      case (?track) {
+        if (track.ownerId != caller) {
+          Runtime.trap("You must own the challenger track");
+        };
+        track;
+      };
+    };
+
+    if (hasOpenBattle(caller, defenderArtistId)) {
+      Runtime.trap("Active or pending battle already exists between opponents");
+    };
+
+    let battleId = challengerTrackId # "." # caller.toText() # "." # defenderArtistId.toText() # "." # Time.now().toText();
+
+    let newBattle : Battle = {
+      id = battleId;
+      challengerId = caller;
+      defenderId = defenderArtistId;
+      challengerTrackId;
+      defenderTrackId = null;
+      status = #pending;
+      votes = [];
+      createdAt = Time.now();
+      acceptedAt = null;
+      expiresAt = null;
+      winnerId = null;
+    };
+
+    battles.add(battleId, newBattle);
+    battleId;
+  };
+
+  // 2. Respond to Battle
+  public shared ({ caller }) func respondToBattle(battleId : Text, defenderTrackId : Text, accept : Bool) : async () {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can respond to battles");
+    };
+
+    let battle = switch (battles.get(battleId)) {
+      case (null) { Runtime.trap("Battle not found") };
+      case (?b) {
+        if (b.defenderId != caller or b.status != #pending) {
+          Runtime.trap("Only defender can respond to pending battle");
+        };
+        b;
+      };
+    };
+
+    // Decline battle
+    if (not accept) {
+      let updatedBattle = { battle with status = #declined };
+      battles.add(battleId, updatedBattle);
+      return;
+    };
+
+    // Accept battle
+    let defenderTrack = switch (tracks.get(defenderTrackId)) {
+      case (null) { Runtime.trap("Defender track not found") };
+      case (?track) {
+        if (track.ownerId != caller) {
+          Runtime.trap("You must own the defender track");
+        };
+        track;
+      };
+    };
+
+    let acceptedAt = Time.now();
+    let updatedBattle = {
+      battle with
+      defenderTrackId = ?defenderTrackId;
+      status = #active;
+      acceptedAt = ?acceptedAt;
+      expiresAt = ?(acceptedAt + (Int.abs(nanosecondsPerDay * 7)));
+    };
+
+    battles.add(battleId, updatedBattle);
+  };
+
+  // 3. Vote in Battle
+  public shared ({ caller }) func voteInBattle(battleId : Text, side : BattleSide) : async () {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can vote in battles");
+    };
+
+    let battle = switch (battles.get(battleId)) {
+      case (null) { Runtime.trap("Battle not found") };
+      case (?b) {
+        if (b.status != #active) {
+          Runtime.trap("Cannot vote in inactive battle");
+        };
+        b;
+      };
+    };
+
+    if (caller == battle.challengerId or caller == battle.defenderId) {
+      Runtime.trap("Cannot vote in own battle");
+    };
+
+    switch (battle.expiresAt) {
+      case (?expiresAt) {
+        if (Time.now() > expiresAt) {
+          let finalizedBattle = finalizeBattleInternal(battle);
+          battles.add(battleId, finalizedBattle);
+          Runtime.trap("Cannot vote in expired battle");
+        };
+      };
+      case (null) {};
+    };
+
+    if (battle.votes.any(func(v) { v.voterId == caller })) {
+      Runtime.trap("Already voted in this battle");
+    };
+
+    let newVote : BattleVote = {
+      voterId = caller;
+      side;
+    };
+
+    let updatedBattle = {
+      battle with votes = battle.votes.concat([ newVote ]);
+    };
+    battles.add(battleId, updatedBattle);
+  };
+
+  // 4. Finalize Battle
+  public shared ({ caller }) func finalizeBattle(battleId : Text) : async () {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can finalize battles");
+    };
+
+    let battle = switch (battles.get(battleId)) {
+      case (null) { Runtime.trap("Battle not found") };
+      case (?b) {
+        if (b.status != #active) {
+          Runtime.trap("Cannot finalize inactive battle");
+        };
+        switch (b.expiresAt) {
+          case (?expiresAt) {
+            if (Time.now() <= expiresAt) {
+              Runtime.trap("Battle has not expired yet");
+            };
+          };
+          case (null) { Runtime.trap("Battle does not have expiry") };
+        };
+        b;
+      };
+    };
+
+    let finalizedBattle = finalizeBattleInternal(battle);
+    battles.add(battleId, finalizedBattle);
+  };
+
+  func finalizeBattleInternal(battle : Battle) : Battle {
+    let challengerVotes = battle.votes.filter(func(v) { v.side == #challenger }).size();
+    let defenderVotes = battle.votes.filter(func(v) { v.side == #defender }).size();
+
+    let winnerId = if (challengerVotes > defenderVotes) {
+      ?battle.challengerId;
+    } else if (defenderVotes > challengerVotes) {
+      ?battle.defenderId;
+    } else { null };
+
+    {
+      battle with
+      status = #completed;
+      winnerId;
+    };
+  };
+
+  // 5. Get Battle By ID
+  public query func getBattleById(battleId : Text) : async ?Battle {
+    battles.get(battleId);
+  };
+
+  // 6. Get Active Battles
+  public query func getActiveBattles() : async [Battle] {
+    let activeBattles = battles.values().toArray().filter(
+      func(battle) { battle.status == #active }
+    );
+
+    func compareVotes(a : Battle, b : Battle) : Order.Order {
+      let aVotes = a.votes.size();
+      let bVotes = b.votes.size();
+      if (aVotes > bVotes) { #less } else if (aVotes < bVotes) { #greater } else { #equal };
+    };
+
+    activeBattles.sort(compareVotes);
+  };
+
+  // 7. Get Pending Battles for Me
+  public query ({ caller }) func getPendingBattlesForMe() : async [Battle] {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can get their battles");
+    };
+
+    let pendingBattles = battles.values().toArray().filter(
+      func(battle) { battle.defenderId == caller and battle.status == #pending }
+    );
+    pendingBattles;
+  };
+
+  // 8. Get My Battles (Challenger or Defender)
+  public query ({ caller }) func getMyBattles() : async [Battle] {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can get their battles");
+    };
+
+    let myBattles = battles.values().toArray().filter(
+      func(battle) { battle.challengerId == caller or battle.defenderId == caller }
+    );
+
+    myBattles.sort(
+      func(a, b) {
+        let aCreated = a.createdAt;
+        let bCreated = b.createdAt;
+        if (aCreated > bCreated) { #less } else if (aCreated < bCreated) { #greater } else { #equal };
+      }
+    );
   };
 };

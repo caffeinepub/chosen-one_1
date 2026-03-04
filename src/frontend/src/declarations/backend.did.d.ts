@@ -11,6 +11,26 @@ import type { IDL } from '@icp-sdk/core/candid';
 import type { Principal } from '@icp-sdk/core/principal';
 
 export interface AverageRating { 'track' : Track, 'averageRating' : number }
+export interface Battle {
+  'id' : string,
+  'status' : BattleStatus,
+  'expiresAt' : [] | [bigint],
+  'winnerId' : [] | [Principal],
+  'votes' : Array<BattleVote>,
+  'defenderTrackId' : [] | [string],
+  'challengerTrackId' : string,
+  'createdAt' : bigint,
+  'defenderId' : Principal,
+  'challengerId' : Principal,
+  'acceptedAt' : [] | [bigint],
+}
+export type BattleSide = { 'challenger' : null } |
+  { 'defender' : null };
+export type BattleStatus = { 'active' : null } |
+  { 'pending' : null } |
+  { 'completed' : null } |
+  { 'declined' : null };
+export interface BattleVote { 'side' : BattleSide, 'voterId' : Principal }
 export interface Comment {
   'id' : string,
   'authorId' : Principal,
@@ -89,13 +109,17 @@ export interface _SERVICE {
   '_initializeAccessControlWithSecret' : ActorMethod<[string], undefined>,
   'addComment' : ActorMethod<[string, string], undefined>,
   'assignCallerUserRole' : ActorMethod<[Principal, UserRole], undefined>,
+  'createBattle' : ActorMethod<[Principal, string], string>,
   'createOrUpdateProfile' : ActorMethod<
     [string, [] | [ExternalBlob], [] | [ExternalBlob], string],
     undefined
   >,
   'deleteComment' : ActorMethod<[string], undefined>,
   'deleteTrack' : ActorMethod<[string], undefined>,
+  'finalizeBattle' : ActorMethod<[string], undefined>,
   'followArtist' : ActorMethod<[Principal], undefined>,
+  'getActiveBattles' : ActorMethod<[], Array<Battle>>,
+  'getBattleById' : ActorMethod<[string], [] | [Battle]>,
   'getCallerProfile' : ActorMethod<[], [] | [UserProfile]>,
   'getCallerUserProfile' : ActorMethod<[], [] | [UserProfile]>,
   'getCallerUserRole' : ActorMethod<[], UserRole>,
@@ -103,9 +127,11 @@ export interface _SERVICE {
   'getFollowedArtists' : ActorMethod<[], Array<Principal>>,
   'getFollowerCount' : ActorMethod<[Principal], bigint>,
   'getMusicRequestsSentByMe' : ActorMethod<[], Array<MusicRequest>>,
+  'getMyBattles' : ActorMethod<[], Array<Battle>>,
   'getMyMusicRequests' : ActorMethod<[], Array<MusicRequest>>,
   'getMyNotifications' : ActorMethod<[], Array<Notification>>,
   'getOwnTracks' : ActorMethod<[], Array<Track>>,
+  'getPendingBattlesForMe' : ActorMethod<[], Array<Battle>>,
   'getTrackAverageRating' : ActorMethod<[string], number>,
   'getTrackById' : ActorMethod<[string], [] | [Track]>,
   'getTracksByOwner' : ActorMethod<[Principal], Array<Track>>,
@@ -124,6 +150,7 @@ export interface _SERVICE {
   'likeTrack' : ActorMethod<[string], undefined>,
   'markNotificationsRead' : ActorMethod<[], undefined>,
   'rateTrack' : ActorMethod<[string, bigint], undefined>,
+  'respondToBattle' : ActorMethod<[string, string, boolean], undefined>,
   'saveCallerUserProfile' : ActorMethod<[UserProfile], undefined>,
   'sendMusicRequest' : ActorMethod<[Principal, string], undefined>,
   'unfollowArtist' : ActorMethod<[Principal], undefined>,
@@ -143,6 +170,7 @@ export interface _SERVICE {
     ],
     undefined
   >,
+  'voteInBattle' : ActorMethod<[string, BattleSide], undefined>,
 }
 export declare const idlService: IDL.ServiceClass;
 export declare const idlInitArgs: IDL.Type[];

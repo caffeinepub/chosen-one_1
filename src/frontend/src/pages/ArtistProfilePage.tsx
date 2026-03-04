@@ -23,6 +23,7 @@ import {
   Pause,
   Play,
   PlayCircle,
+  Swords,
   User,
   UserCheck,
   UserPlus,
@@ -44,6 +45,7 @@ import {
   useUnfollowArtist,
   useUserProfile,
 } from "../hooks/useQueries";
+import { ChallengeArtistButton } from "./BattlesPage";
 
 function trackToQueueTrack(track: Track): QueueTrack {
   return {
@@ -584,6 +586,11 @@ export function ArtistProfilePage() {
                   )}
                 </Tooltip>
               </TooltipProvider>
+            )}
+
+            {/* Challenge to Battle button */}
+            {!isOwnProfile && isAuthenticated && principalId && (
+              <ChallengeArtistButton defenderPrincipalId={principalId} />
             )}
           </div>
         </div>

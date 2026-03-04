@@ -14,6 +14,7 @@ import {
   LogIn,
   LogOut,
   Music2,
+  Swords,
   Trophy,
   Upload,
   User,
@@ -26,6 +27,7 @@ import { useInternetIdentity } from "../hooks/useInternetIdentity";
 import {
   useMarkNotificationsRead,
   useMyNotifications,
+  usePendingBattlesForMe,
   useUserProfile,
 } from "../hooks/useQueries";
 
@@ -89,6 +91,12 @@ const navLinks = [
     ocid: "nav.following.link",
   },
   {
+    to: "/battles",
+    label: "Battles",
+    icon: Swords,
+    ocid: "nav.battles.link",
+  },
+  {
     to: "/leaderboard",
     label: "Leaderboard",
     icon: Trophy,
@@ -111,8 +119,10 @@ export function Navbar() {
   const [notifOpen, setNotifOpen] = useState(false);
   const { data: notifications } = useMyNotifications();
   const markRead = useMarkNotificationsRead();
+  const { data: pendingBattles } = usePendingBattlesForMe();
 
   const unreadCount = notifications?.length ?? 0;
+  const pendingBattleCount = pendingBattles?.length ?? 0;
 
   function handleMarkRead() {
     markRead.mutate(undefined, {
@@ -143,6 +153,9 @@ export function Navbar() {
           {navLinks.map((link) => {
             const Icon = link.icon;
             const isActive = location.pathname === link.to;
+            const isBattles = link.to === "/battles";
+            const battleBadge =
+              isBattles && isAuthenticated && pendingBattleCount > 0;
             return (
               <Link
                 key={link.to}
@@ -162,6 +175,11 @@ export function Navbar() {
                 >
                   <Icon className="h-4 w-4" />
                   {link.label}
+                  {battleBadge && (
+                    <span className="ml-0.5 h-4 min-w-4 px-0.5 rounded-full bg-red-500 text-[9px] font-bold text-white flex items-center justify-center font-ui tabular-nums">
+                      {pendingBattleCount > 9 ? "9+" : pendingBattleCount}
+                    </span>
+                  )}
                 </Button>
                 {/* Gold underline indicator */}
                 <span
@@ -294,6 +312,9 @@ export function Navbar() {
         {navLinks.map((link) => {
           const Icon = link.icon;
           const isActive = location.pathname === link.to;
+          const isBattles = link.to === "/battles";
+          const battleBadge =
+            isBattles && isAuthenticated && pendingBattleCount > 0;
           return (
             <Link
               key={link.to}
@@ -304,11 +325,18 @@ export function Navbar() {
               <button
                 type="button"
                 className={cn(
-                  "w-full flex flex-col items-center gap-1 py-2 text-xs font-ui font-semibold transition-colors",
+                  "w-full flex flex-col items-center gap-1 py-2 text-xs font-ui font-semibold transition-colors relative",
                   isActive ? "text-gold" : "text-muted-foreground",
                 )}
               >
-                <Icon className="h-4 w-4" />
+                <span className="relative">
+                  <Icon className="h-4 w-4" />
+                  {battleBadge && (
+                    <span className="absolute -top-1 -right-1.5 h-3.5 min-w-3.5 px-0.5 rounded-full bg-red-500 text-[8px] font-bold text-white flex items-center justify-center">
+                      {pendingBattleCount > 9 ? "9+" : pendingBattleCount}
+                    </span>
+                  )}
+                </span>
                 {link.label}
               </button>
             </Link>

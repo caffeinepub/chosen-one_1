@@ -11,6 +11,7 @@ import { GlobalPlayerBar } from "./components/GlobalPlayerBar";
 import { Navbar } from "./components/Navbar";
 import { PlayerProvider, usePlayer } from "./contexts/PlayerContext";
 import { ArtistProfilePage } from "./pages/ArtistProfilePage";
+import { BattlesPage } from "./pages/BattlesPage";
 import { ChartsPage } from "./pages/ChartsPage";
 import { FollowingPage } from "./pages/FollowingPage";
 import { LeaderboardPage } from "./pages/LeaderboardPage";
@@ -104,11 +105,18 @@ const followingRoute = createRoute({
   component: FollowingPage,
 });
 
+const battlesRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/battles",
+  component: BattlesPage,
+});
+
 /* ── Router ──────────────────────────────────────────── */
 const routeTree = rootRoute.addChildren([
   chartsRoute,
   leaderboardRoute,
   followingRoute,
+  battlesRoute,
   uploadRoute,
   myTracksRoute,
   profileRoute,

@@ -14,9 +14,15 @@ export class ExternalBlob {
     static fromBytes(blob: Uint8Array<ArrayBuffer>): ExternalBlob;
     withUploadProgress(onProgress: (percentage: number) => void): ExternalBlob;
 }
-export interface AverageRating {
-    track: Track;
-    averageRating: number;
+export interface UserProfile {
+    profilePicKey?: ExternalBlob;
+    username: string;
+    bgStyle: string;
+    bannerKey?: ExternalBlob;
+}
+export interface BattleVote {
+    side: BattleSide;
+    voterId: Principal;
 }
 export interface Track {
     id: string;
@@ -45,13 +51,6 @@ export interface Comment {
     trackId: string;
     timestamp: bigint;
 }
-export interface Notification {
-    id: string;
-    trackTitle: string;
-    trackId: string;
-    timestamp: bigint;
-    fromArtistId: Principal;
-}
 export interface MusicRequest {
     id: string;
     fromUserId: Principal;
@@ -59,11 +58,39 @@ export interface MusicRequest {
     timestamp: bigint;
     toArtistId: Principal;
 }
-export interface UserProfile {
-    profilePicKey?: ExternalBlob;
-    username: string;
-    bgStyle: string;
-    bannerKey?: ExternalBlob;
+export interface AverageRating {
+    track: Track;
+    averageRating: number;
+}
+export interface Notification {
+    id: string;
+    trackTitle: string;
+    trackId: string;
+    timestamp: bigint;
+    fromArtistId: Principal;
+}
+export interface Battle {
+    id: string;
+    status: BattleStatus;
+    expiresAt?: bigint;
+    winnerId?: Principal;
+    votes: Array<BattleVote>;
+    defenderTrackId?: string;
+    challengerTrackId: string;
+    createdAt: bigint;
+    defenderId: Principal;
+    challengerId: Principal;
+    acceptedAt?: bigint;
+}
+export enum BattleSide {
+    challenger = "challenger",
+    defender = "defender"
+}
+export enum BattleStatus {
+    active = "active",
+    pending = "pending",
+    completed = "completed",
+    declined = "declined"
 }
 export enum UserRole {
     admin = "admin",
@@ -73,10 +100,14 @@ export enum UserRole {
 export interface backendInterface {
     addComment(trackId: string, text: string): Promise<void>;
     assignCallerUserRole(user: Principal, role: UserRole): Promise<void>;
+    createBattle(defenderArtistId: Principal, challengerTrackId: string): Promise<string>;
     createOrUpdateProfile(username: string, profilePicKey: ExternalBlob | null, bannerKey: ExternalBlob | null, bgStyle: string): Promise<void>;
     deleteComment(commentId: string): Promise<void>;
     deleteTrack(id: string): Promise<void>;
+    finalizeBattle(battleId: string): Promise<void>;
     followArtist(artistId: Principal): Promise<void>;
+    getActiveBattles(): Promise<Array<Battle>>;
+    getBattleById(battleId: string): Promise<Battle | null>;
     getCallerProfile(): Promise<UserProfile | null>;
     getCallerUserProfile(): Promise<UserProfile | null>;
     getCallerUserRole(): Promise<UserRole>;
@@ -84,9 +115,11 @@ export interface backendInterface {
     getFollowedArtists(): Promise<Array<Principal>>;
     getFollowerCount(artistId: Principal): Promise<bigint>;
     getMusicRequestsSentByMe(): Promise<Array<MusicRequest>>;
+    getMyBattles(): Promise<Array<Battle>>;
     getMyMusicRequests(): Promise<Array<MusicRequest>>;
     getMyNotifications(): Promise<Array<Notification>>;
     getOwnTracks(): Promise<Array<Track>>;
+    getPendingBattlesForMe(): Promise<Array<Battle>>;
     getTrackAverageRating(id: string): Promise<number>;
     getTrackById(id: string): Promise<Track | null>;
     getTracksByOwner(owner: Principal): Promise<Array<Track>>;
@@ -99,9 +132,11 @@ export interface backendInterface {
     likeTrack(trackId: string): Promise<void>;
     markNotificationsRead(): Promise<void>;
     rateTrack(trackId: string, score: bigint): Promise<void>;
+    respondToBattle(battleId: string, defenderTrackId: string, accept: boolean): Promise<void>;
     saveCallerUserProfile(profile: UserProfile): Promise<void>;
     sendMusicRequest(toArtistId: Principal, message: string): Promise<void>;
     unfollowArtist(artistId: Principal): Promise<void>;
     unlikeTrack(trackId: string): Promise<void>;
     uploadTrack(id: string, title: string, artist: string, description: string, genre: string, audioFileKey: ExternalBlob, coverKey: ExternalBlob | null, city: string, state: string, region: string): Promise<void>;
+    voteInBattle(battleId: string, side: BattleSide): Promise<void>;
 }

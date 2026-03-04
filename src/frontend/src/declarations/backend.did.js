@@ -25,6 +25,33 @@ export const UserRole = IDL.Variant({
   'guest' : IDL.Null,
 });
 export const ExternalBlob = IDL.Vec(IDL.Nat8);
+export const BattleStatus = IDL.Variant({
+  'active' : IDL.Null,
+  'pending' : IDL.Null,
+  'completed' : IDL.Null,
+  'declined' : IDL.Null,
+});
+export const BattleSide = IDL.Variant({
+  'challenger' : IDL.Null,
+  'defender' : IDL.Null,
+});
+export const BattleVote = IDL.Record({
+  'side' : BattleSide,
+  'voterId' : IDL.Principal,
+});
+export const Battle = IDL.Record({
+  'id' : IDL.Text,
+  'status' : BattleStatus,
+  'expiresAt' : IDL.Opt(IDL.Int),
+  'winnerId' : IDL.Opt(IDL.Principal),
+  'votes' : IDL.Vec(BattleVote),
+  'defenderTrackId' : IDL.Opt(IDL.Text),
+  'challengerTrackId' : IDL.Text,
+  'createdAt' : IDL.Int,
+  'defenderId' : IDL.Principal,
+  'challengerId' : IDL.Principal,
+  'acceptedAt' : IDL.Opt(IDL.Int),
+});
 export const UserProfile = IDL.Record({
   'profilePicKey' : IDL.Opt(ExternalBlob),
   'username' : IDL.Text,
@@ -107,6 +134,7 @@ export const idlService = IDL.Service({
   '_initializeAccessControlWithSecret' : IDL.Func([IDL.Text], [], []),
   'addComment' : IDL.Func([IDL.Text, IDL.Text], [], []),
   'assignCallerUserRole' : IDL.Func([IDL.Principal, UserRole], [], []),
+  'createBattle' : IDL.Func([IDL.Principal, IDL.Text], [IDL.Text], []),
   'createOrUpdateProfile' : IDL.Func(
       [IDL.Text, IDL.Opt(ExternalBlob), IDL.Opt(ExternalBlob), IDL.Text],
       [],
@@ -114,7 +142,10 @@ export const idlService = IDL.Service({
     ),
   'deleteComment' : IDL.Func([IDL.Text], [], []),
   'deleteTrack' : IDL.Func([IDL.Text], [], []),
+  'finalizeBattle' : IDL.Func([IDL.Text], [], []),
   'followArtist' : IDL.Func([IDL.Principal], [], []),
+  'getActiveBattles' : IDL.Func([], [IDL.Vec(Battle)], ['query']),
+  'getBattleById' : IDL.Func([IDL.Text], [IDL.Opt(Battle)], ['query']),
   'getCallerProfile' : IDL.Func([], [IDL.Opt(UserProfile)], ['query']),
   'getCallerUserProfile' : IDL.Func([], [IDL.Opt(UserProfile)], ['query']),
   'getCallerUserRole' : IDL.Func([], [UserRole], ['query']),
@@ -122,9 +153,11 @@ export const idlService = IDL.Service({
   'getFollowedArtists' : IDL.Func([], [IDL.Vec(IDL.Principal)], ['query']),
   'getFollowerCount' : IDL.Func([IDL.Principal], [IDL.Nat], ['query']),
   'getMusicRequestsSentByMe' : IDL.Func([], [IDL.Vec(MusicRequest)], ['query']),
+  'getMyBattles' : IDL.Func([], [IDL.Vec(Battle)], ['query']),
   'getMyMusicRequests' : IDL.Func([], [IDL.Vec(MusicRequest)], ['query']),
   'getMyNotifications' : IDL.Func([], [IDL.Vec(Notification)], ['query']),
   'getOwnTracks' : IDL.Func([], [IDL.Vec(Track)], ['query']),
+  'getPendingBattlesForMe' : IDL.Func([], [IDL.Vec(Battle)], ['query']),
   'getTrackAverageRating' : IDL.Func([IDL.Text], [IDL.Float64], ['query']),
   'getTrackById' : IDL.Func([IDL.Text], [IDL.Opt(Track)], ['query']),
   'getTracksByOwner' : IDL.Func([IDL.Principal], [IDL.Vec(Track)], ['query']),
@@ -149,6 +182,7 @@ export const idlService = IDL.Service({
   'likeTrack' : IDL.Func([IDL.Text], [], []),
   'markNotificationsRead' : IDL.Func([], [], []),
   'rateTrack' : IDL.Func([IDL.Text, IDL.Nat], [], []),
+  'respondToBattle' : IDL.Func([IDL.Text, IDL.Text, IDL.Bool], [], []),
   'saveCallerUserProfile' : IDL.Func([UserProfile], [], []),
   'sendMusicRequest' : IDL.Func([IDL.Principal, IDL.Text], [], []),
   'unfollowArtist' : IDL.Func([IDL.Principal], [], []),
@@ -169,6 +203,7 @@ export const idlService = IDL.Service({
       [],
       [],
     ),
+  'voteInBattle' : IDL.Func([IDL.Text, BattleSide], [], []),
 });
 
 export const idlInitArgs = [];
@@ -191,6 +226,33 @@ export const idlFactory = ({ IDL }) => {
     'guest' : IDL.Null,
   });
   const ExternalBlob = IDL.Vec(IDL.Nat8);
+  const BattleStatus = IDL.Variant({
+    'active' : IDL.Null,
+    'pending' : IDL.Null,
+    'completed' : IDL.Null,
+    'declined' : IDL.Null,
+  });
+  const BattleSide = IDL.Variant({
+    'challenger' : IDL.Null,
+    'defender' : IDL.Null,
+  });
+  const BattleVote = IDL.Record({
+    'side' : BattleSide,
+    'voterId' : IDL.Principal,
+  });
+  const Battle = IDL.Record({
+    'id' : IDL.Text,
+    'status' : BattleStatus,
+    'expiresAt' : IDL.Opt(IDL.Int),
+    'winnerId' : IDL.Opt(IDL.Principal),
+    'votes' : IDL.Vec(BattleVote),
+    'defenderTrackId' : IDL.Opt(IDL.Text),
+    'challengerTrackId' : IDL.Text,
+    'createdAt' : IDL.Int,
+    'defenderId' : IDL.Principal,
+    'challengerId' : IDL.Principal,
+    'acceptedAt' : IDL.Opt(IDL.Int),
+  });
   const UserProfile = IDL.Record({
     'profilePicKey' : IDL.Opt(ExternalBlob),
     'username' : IDL.Text,
@@ -273,6 +335,7 @@ export const idlFactory = ({ IDL }) => {
     '_initializeAccessControlWithSecret' : IDL.Func([IDL.Text], [], []),
     'addComment' : IDL.Func([IDL.Text, IDL.Text], [], []),
     'assignCallerUserRole' : IDL.Func([IDL.Principal, UserRole], [], []),
+    'createBattle' : IDL.Func([IDL.Principal, IDL.Text], [IDL.Text], []),
     'createOrUpdateProfile' : IDL.Func(
         [IDL.Text, IDL.Opt(ExternalBlob), IDL.Opt(ExternalBlob), IDL.Text],
         [],
@@ -280,7 +343,10 @@ export const idlFactory = ({ IDL }) => {
       ),
     'deleteComment' : IDL.Func([IDL.Text], [], []),
     'deleteTrack' : IDL.Func([IDL.Text], [], []),
+    'finalizeBattle' : IDL.Func([IDL.Text], [], []),
     'followArtist' : IDL.Func([IDL.Principal], [], []),
+    'getActiveBattles' : IDL.Func([], [IDL.Vec(Battle)], ['query']),
+    'getBattleById' : IDL.Func([IDL.Text], [IDL.Opt(Battle)], ['query']),
     'getCallerProfile' : IDL.Func([], [IDL.Opt(UserProfile)], ['query']),
     'getCallerUserProfile' : IDL.Func([], [IDL.Opt(UserProfile)], ['query']),
     'getCallerUserRole' : IDL.Func([], [UserRole], ['query']),
@@ -292,9 +358,11 @@ export const idlFactory = ({ IDL }) => {
         [IDL.Vec(MusicRequest)],
         ['query'],
       ),
+    'getMyBattles' : IDL.Func([], [IDL.Vec(Battle)], ['query']),
     'getMyMusicRequests' : IDL.Func([], [IDL.Vec(MusicRequest)], ['query']),
     'getMyNotifications' : IDL.Func([], [IDL.Vec(Notification)], ['query']),
     'getOwnTracks' : IDL.Func([], [IDL.Vec(Track)], ['query']),
+    'getPendingBattlesForMe' : IDL.Func([], [IDL.Vec(Battle)], ['query']),
     'getTrackAverageRating' : IDL.Func([IDL.Text], [IDL.Float64], ['query']),
     'getTrackById' : IDL.Func([IDL.Text], [IDL.Opt(Track)], ['query']),
     'getTracksByOwner' : IDL.Func([IDL.Principal], [IDL.Vec(Track)], ['query']),
@@ -323,6 +391,7 @@ export const idlFactory = ({ IDL }) => {
     'likeTrack' : IDL.Func([IDL.Text], [], []),
     'markNotificationsRead' : IDL.Func([], [], []),
     'rateTrack' : IDL.Func([IDL.Text, IDL.Nat], [], []),
+    'respondToBattle' : IDL.Func([IDL.Text, IDL.Text, IDL.Bool], [], []),
     'saveCallerUserProfile' : IDL.Func([UserProfile], [], []),
     'sendMusicRequest' : IDL.Func([IDL.Principal, IDL.Text], [], []),
     'unfollowArtist' : IDL.Func([IDL.Principal], [], []),
@@ -343,6 +412,7 @@ export const idlFactory = ({ IDL }) => {
         [],
         [],
       ),
+    'voteInBattle' : IDL.Func([IDL.Text, BattleSide], [], []),
   });
 };
 

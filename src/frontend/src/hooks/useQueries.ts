@@ -3,6 +3,8 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ExternalBlob } from "../backend";
 import type {
   AverageRating,
+  Battle,
+  BattleSide,
   Comment,
   MusicRequest,
   Notification,
@@ -503,6 +505,160 @@ export function useMarkNotificationsRead() {
     },
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ["my-notifications"] });
+    },
+  });
+}
+
+/* ── All Artists (from charts data) ─────────────────── */
+export type ArtistEntry = {
+  ownerId: Principal;
+  artistName: string;
+};
+
+export function useAllArtists() {
+  const { actor, isFetching } = useActor();
+  return useQuery<ArtistEntry[]>({
+    queryKey: ["all-artists"],
+    queryFn: async () => {
+      if (!actor) return [];
+      const ratings = await actor.getTracksSortedByRating();
+      const seen = new Set<string>();
+      const artists: ArtistEntry[] = [];
+      for (const entry of ratings) {
+        const idStr = entry.track.ownerId.toString();
+        if (!seen.has(idStr)) {
+          seen.add(idStr);
+          artists.push({
+            ownerId: entry.track.ownerId,
+            artistName: entry.track.artist,
+          });
+        }
+      }
+      return artists;
+    },
+    enabled: !!actor && !isFetching,
+    staleTime: 60_000,
+  });
+}
+
+/* ── Battle Queries ──────────────────────────────────── */
+
+export function useActiveBattles() {
+  const { actor, isFetching } = useActor();
+  return useQuery<Battle[]>({
+    queryKey: ["active-battles"],
+    queryFn: async () => {
+      if (!actor) return [];
+      return actor.getActiveBattles();
+    },
+    enabled: !!actor && !isFetching,
+    refetchInterval: 30_000,
+  });
+}
+
+export function usePendingBattlesForMe() {
+  const { actor, isFetching } = useActor();
+  return useQuery<Battle[]>({
+    queryKey: ["pending-battles"],
+    queryFn: async () => {
+      if (!actor) return [];
+      return actor.getPendingBattlesForMe();
+    },
+    enabled: !!actor && !isFetching,
+    refetchInterval: 30_000,
+  });
+}
+
+export function useMyBattles() {
+  const { actor, isFetching } = useActor();
+  return useQuery<Battle[]>({
+    queryKey: ["my-battles"],
+    queryFn: async () => {
+      if (!actor) return [];
+      return actor.getMyBattles();
+    },
+    enabled: !!actor && !isFetching,
+  });
+}
+
+export function useCreateBattle() {
+  const { actor } = useActor();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      defenderArtistId,
+      challengerTrackId,
+    }: {
+      defenderArtistId: Principal;
+      challengerTrackId: string;
+    }) => {
+      if (!actor) throw new Error("Not authenticated");
+      return actor.createBattle(defenderArtistId, challengerTrackId);
+    },
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ["active-battles"] });
+      void qc.invalidateQueries({ queryKey: ["pending-battles"] });
+      void qc.invalidateQueries({ queryKey: ["my-battles"] });
+    },
+  });
+}
+
+export function useRespondToBattle() {
+  const { actor } = useActor();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      battleId,
+      defenderTrackId,
+      accept,
+    }: {
+      battleId: string;
+      defenderTrackId: string;
+      accept: boolean;
+    }) => {
+      if (!actor) throw new Error("Not authenticated");
+      await actor.respondToBattle(battleId, defenderTrackId, accept);
+    },
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ["active-battles"] });
+      void qc.invalidateQueries({ queryKey: ["pending-battles"] });
+      void qc.invalidateQueries({ queryKey: ["my-battles"] });
+    },
+  });
+}
+
+export function useVoteInBattle() {
+  const { actor } = useActor();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      battleId,
+      side,
+    }: {
+      battleId: string;
+      side: BattleSide;
+    }) => {
+      if (!actor) throw new Error("Not authenticated");
+      await actor.voteInBattle(battleId, side);
+    },
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ["active-battles"] });
+      void qc.invalidateQueries({ queryKey: ["my-battles"] });
+    },
+  });
+}
+
+export function useFinalizeBattle() {
+  const { actor } = useActor();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (battleId: string) => {
+      if (!actor) throw new Error("Not authenticated");
+      await actor.finalizeBattle(battleId);
+    },
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ["active-battles"] });
+      void qc.invalidateQueries({ queryKey: ["my-battles"] });
     },
   });
 }
