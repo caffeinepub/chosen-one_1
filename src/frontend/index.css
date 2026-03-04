@@ -212,4 +212,25 @@
     border: none;
     box-shadow: 0 0 8px oklch(var(--gold) / 0.5);
   }
+
+  .no-scrollbar {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+
+  .bg-gold\/3 {
+    background-color: oklch(var(--gold) / 0.03);
+  }
+
+  .border-gold\/12 {
+    border-color: oklch(var(--gold) / 0.12);
+  }
+
+  .bg-gold\/8 {
+    background-color: oklch(var(--gold) / 0.08);
+  }
 }

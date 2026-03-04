@@ -7,12 +7,16 @@ import Time "mo:core/Time";
 import Iter "mo:core/Iter";
 import Text "mo:core/Text";
 import Nat "mo:core/Nat";
+import Char "mo:core/Char";
 import Storage "blob-storage/Storage";
 import MixinStorage "blob-storage/Mixin";
 import AccessControl "authorization/access-control";
-import MixinAuthorization "authorization/MixinAuthorization";
 import Float "mo:core/Float";
 import Int "mo:core/Int";
+import MixinAuthorization "authorization/MixinAuthorization";
+
+import List "mo:core/List";
+
 
 actor {
   // Mixin components
@@ -26,6 +30,8 @@ actor {
   type UserProfile = {
     username : Text;
     profilePicKey : ?Storage.ExternalBlob;
+    bannerKey : ?Storage.ExternalBlob;
+    bgStyle : Text;
   };
 
   type Rating = {
@@ -39,10 +45,15 @@ actor {
     title : Text;
     artist : Text;
     description : Text;
+    genre : Text;
     audioFileKey : Storage.ExternalBlob;
     coverKey : ?Storage.ExternalBlob;
     uploadTimestamp : Int;
     ratings : [Rating];
+    city : Text;
+    state : Text;
+    region : Text;
+    likes : [Principal];
   };
 
   module Track {
@@ -64,35 +75,117 @@ actor {
     };
   };
 
-  // Store user profiles and tracks in persistent Maps
+  type Comment = {
+    id : Text;
+    trackId : Text;
+    authorId : Principal;
+    text : Text;
+    timestamp : Int;
+  };
+
+  module Comment {
+    public func compareTimestamp(a : Comment, b : Comment) : Order.Order {
+      let timeOrder = Int.compare(a.timestamp, b.timestamp);
+      switch (timeOrder) {
+        case (#equal) {
+          switch (Text.compare(a.trackId, b.trackId)) {
+            case (#equal) { Text.compare(a.id, b.id) };
+            case (order) { order };
+          };
+        };
+        case (order) { order };
+      };
+    };
+  };
+
+  // New MusicRequest type
+  type MusicRequest = {
+    id : Text;
+    fromUserId : Principal;
+    toArtistId : Principal;
+    message : Text;
+    timestamp : Int;
+  };
+
+  // New Notification type
+  type Notification = {
+    id : Text;
+    fromArtistId : Principal;
+    trackId : Text;
+    trackTitle : Text;
+    timestamp : Int;
+  };
+
+  // Store user profiles, tracks, and comments in persistent Maps
   let userProfiles = Map.empty<Principal, UserProfile>();
   let tracks = Map.empty<Text, Track>();
+  let comments = Map.empty<Text, Comment>();
+  let musicRequests = Map.empty<Text, MusicRequest>();
+
+  // Store follows in persistent map
+  let follows = Map.empty<Principal, [Principal]>();
+
+  // Store notifications in persistent map
+  let notifications = Map.empty<Principal, [Notification]>();
 
   // Profile management
-  public shared ({ caller }) func createOrUpdateProfile(username : Text, profilePicKey : ?Storage.ExternalBlob) : async () {
+  public shared ({ caller }) func createOrUpdateProfile(
+    username : Text,
+    profilePicKey : ?Storage.ExternalBlob,
+    bannerKey : ?Storage.ExternalBlob,
+    bgStyle : Text,
+  ) : async () {
     if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
       Runtime.trap("Unauthorized: Only users can create or update profiles");
     };
     let newProfile : UserProfile = {
       username;
       profilePicKey;
+      bannerKey;
+      bgStyle;
     };
     userProfiles.add(caller, newProfile);
   };
 
   public query ({ caller }) func getCallerProfile() : async ?UserProfile {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can access their profile");
+    };
     userProfiles.get(caller);
   };
 
   public query ({ caller }) func getUserProfile(user : Principal) : async ?UserProfile {
-    if (caller != user and not AccessControl.isAdmin(accessControlState, caller)) {
-      Runtime.trap("Unauthorized: Can only view your own profile");
-    };
     userProfiles.get(user);
   };
 
+  // Alias functions for frontend compatibility
+  public query ({ caller }) func getCallerUserProfile() : async ?UserProfile {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can access their profile");
+    };
+    userProfiles.get(caller);
+  };
+
+  public shared ({ caller }) func saveCallerUserProfile(profile : UserProfile) : async () {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can save profiles");
+    };
+    userProfiles.add(caller, profile);
+  };
+
   // Track management
-  public shared ({ caller }) func uploadTrack(id : Text, title : Text, artist : Text, description : Text, audioFileKey : Storage.ExternalBlob, coverKey : ?Storage.ExternalBlob) : async () {
+  public shared ({ caller }) func uploadTrack(
+    id : Text,
+    title : Text,
+    artist : Text,
+    description : Text,
+    genre : Text,
+    audioFileKey : Storage.ExternalBlob,
+    coverKey : ?Storage.ExternalBlob,
+    city : Text,
+    state : Text,
+    region : Text,
+  ) : async () {
     if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
       Runtime.trap("Unauthorized: Only users can upload tracks");
     };
@@ -107,13 +200,45 @@ actor {
       title;
       artist;
       description;
+      genre;
       audioFileKey;
       coverKey;
       uploadTimestamp = Time.now();
       ratings = [];
+      city;
+      state;
+      region;
+      likes = [];
     };
 
     tracks.add(id, newTrack);
+
+    // Send notifications to followers
+    notificationsSendToFollowers(caller, id, title);
+  };
+
+  func notificationsSendToFollowers(artist : Principal, trackId : Text, trackTitle : Text) {
+    let timestamp = Time.now();
+
+    let followers = follows.toArray().filter(func((_, artists)) { artists.any(func(id) { id == artist }) }).map(
+      func((follower, _)) { follower }
+    );
+
+    for (follower in followers.values()) {
+      let notification : Notification = {
+        id = trackId # "." # follower.toText();
+        fromArtistId = artist;
+        trackId;
+        trackTitle;
+        timestamp;
+      };
+
+      let existingNotifications = switch (notifications.get(follower)) {
+        case (null) { [] };
+        case (?n) { n };
+      };
+      notifications.add(follower, [notification].concat(existingNotifications));
+    };
   };
 
   public shared ({ caller }) func deleteTrack(id : Text) : async () {
@@ -174,10 +299,15 @@ actor {
           title = track.title;
           artist = track.artist;
           description = track.description;
+          genre = track.genre;
           audioFileKey = track.audioFileKey;
           coverKey = track.coverKey;
           uploadTimestamp = track.uploadTimestamp;
           ratings = newRatingsArray;
+          city = track.city;
+          state = track.state;
+          region = track.region;
+          likes = track.likes;
         };
 
         tracks.add(trackId, updatedTrack);
@@ -192,8 +322,76 @@ actor {
     total.toFloat() / track.ratings.size().toInt().toFloat();
   };
 
-  // Getting all tracks sorted by average rating (descending)
-  public query ({ caller }) func getTracksSortedByRating() : async [Track.AverageRating] {
+  // Calculate nanoseconds for time window
+  let nanosecondsPerDay = 86400000000000;
+
+  func getTimeWindowInNanos(windowType : Text) : Int {
+    switch (windowType) {
+      case ("daily") { nanosecondsPerDay };
+      case ("weekly") { nanosecondsPerDay * 7 };
+      case ("monthly") { nanosecondsPerDay * 30 };
+      case (_) { 0 };
+    };
+  };
+
+  public query func getTracksSortedByRatingInWindow(windowType : Text) : async [Track.AverageRating] {
+    let currentTime = Time.now();
+    let timeWindowInNanos = getTimeWindowInNanos(windowType);
+
+    let filteredTracks : [Track] = tracks.values().toArray().filter(
+      func(track) {
+        if (timeWindowInNanos == 0) { return true };
+        currentTime - track.uploadTimestamp <= timeWindowInNanos;
+      }
+    );
+
+    let averageRatings : [Track.AverageRating] = filteredTracks.map(
+      func(track) {
+        {
+          track;
+          averageRating = calculateAverageRating(track);
+        };
+      }
+    );
+
+    let sorted = averageRatings.sort(Track.compareAverageRating);
+    sorted.sliceToArray(0, Nat.min(100, sorted.size()));
+  };
+
+  public query func getTracksFilteredByLocation(windowType : Text, locationType : Text, locationValue : Text) : async [Track.AverageRating] {
+    let currentTime = Time.now();
+    let timeWindowInNanos = getTimeWindowInNanos(windowType);
+
+    let filteredTracks : [Track] = tracks.values().toArray().filter(
+      func(track) {
+        let withinTimeWindow = if (timeWindowInNanos == 0) { true } else { currentTime - track.uploadTimestamp <= timeWindowInNanos };
+
+        let locationMatches = switch (locationType) {
+          case ("nationwide") { true };
+          case ("region") { Text.equal(track.region.toLower(), locationValue.toLower()) };
+          case ("state") { Text.equal(track.state, locationValue) };
+          case ("city") { Text.equal(track.city, locationValue) };
+          case (_) { false };
+        };
+
+        withinTimeWindow and locationMatches;
+      }
+    );
+
+    let averageRatings : [Track.AverageRating] = filteredTracks.map(
+      func(track) {
+        {
+          track;
+          averageRating = calculateAverageRating(track);
+        };
+      }
+    );
+
+    let sorted = averageRatings.sort(Track.compareAverageRating);
+    sorted.sliceToArray(0, Nat.min(100, sorted.size()));
+  };
+
+  public query func getTracksSortedByRating() : async [Track.AverageRating] {
     let averageRatings : [Track.AverageRating] = tracks.values().toArray().map(
       func(track) {
         {
@@ -218,14 +416,288 @@ actor {
     ownTracks;
   };
 
-  public query ({ caller }) func getTrackById(id : Text) : async ?Track {
+  public query func getTracksByOwner(owner : Principal) : async [Track] {
+    tracks.values().toArray().filter(func(track) { track.ownerId == owner });
+  };
+
+  public query func getTrackById(id : Text) : async ?Track {
     tracks.get(id);
   };
 
-  public query ({ caller }) func getTrackAverageRating(id : Text) : async Float {
+  public query func getTrackAverageRating(id : Text) : async Float {
     switch (tracks.get(id)) {
       case (null) { 0.0 };
       case (?track) { calculateAverageRating(track) };
     };
+  };
+
+  // Comments feature
+  public shared ({ caller }) func addComment(trackId : Text, text : Text) : async () {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can add comments");
+    };
+
+    if (text.trim(#predicate(Char.isWhitespace)).size() == 0) {
+      Runtime.trap("Comment text cannot be empty");
+    };
+
+    let timestamp = Time.now();
+    let commentId = trackId # "." # caller.toText() # "." # timestamp.toText();
+
+    let newComment : Comment = {
+      id = commentId;
+      trackId;
+      authorId = caller;
+      text;
+      timestamp;
+    };
+
+    comments.add(commentId, newComment);
+  };
+
+  public query func getCommentsForTrack(trackId : Text) : async [Comment] {
+    let trackComments = comments.values().toArray().filter(
+      func(comment) { comment.trackId == trackId }
+    );
+
+    trackComments.sort(Comment.compareTimestamp);
+  };
+
+  public shared ({ caller }) func deleteComment(commentId : Text) : async () {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can delete comments");
+    };
+
+    switch (comments.get(commentId)) {
+      case (null) { Runtime.trap("Comment not found") };
+      case (?comment) {
+        if (comment.authorId != caller) {
+          Runtime.trap("Cannot delete a comment that does not belong to you");
+        };
+        comments.remove(commentId);
+      };
+    };
+  };
+
+  // New Like functionality
+  public shared ({ caller }) func likeTrack(trackId : Text) : async () {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can like tracks");
+    };
+
+    switch (tracks.get(trackId)) {
+      case (null) { Runtime.trap("Track not found") };
+      case (?track) {
+        if (track.ownerId == caller) {
+          Runtime.trap("Cannot like your own track");
+        };
+
+        let hasLiked = track.likes.find(
+          func(principal) { principal == caller }
+        );
+
+        let updatedLikes = switch (hasLiked) {
+          case (null) { track.likes.concat([ caller ]) };
+          case (?_) {
+            track.likes.filter(func(principal) { principal != caller });
+          };
+        };
+
+        let updatedTrack : Track = {
+          id = track.id;
+          ownerId = track.ownerId;
+          title = track.title;
+          artist = track.artist;
+          description = track.description;
+          genre = track.genre;
+          audioFileKey = track.audioFileKey;
+          coverKey = track.coverKey;
+          uploadTimestamp = track.uploadTimestamp;
+          ratings = track.ratings;
+          city = track.city;
+          state = track.state;
+          region = track.region;
+          likes = updatedLikes;
+        };
+
+        tracks.add(trackId, updatedTrack);
+      };
+    };
+  };
+
+  public shared ({ caller }) func unlikeTrack(trackId : Text) : async () {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can unlike tracks");
+    };
+
+    switch (tracks.get(trackId)) {
+      case (null) { Runtime.trap("Track not found") };
+      case (?track) {
+        let updatedLikes = track.likes.filter(func(principal) { principal != caller });
+
+        let updatedTrack : Track = {
+          id = track.id;
+          ownerId = track.ownerId;
+          title = track.title;
+          artist = track.artist;
+          description = track.description;
+          genre = track.genre;
+          audioFileKey = track.audioFileKey;
+          coverKey = track.coverKey;
+          uploadTimestamp = track.uploadTimestamp;
+          ratings = track.ratings;
+          city = track.city;
+          state = track.state;
+          region = track.region;
+          likes = updatedLikes;
+        };
+
+        tracks.add(trackId, updatedTrack);
+      };
+    };
+  };
+
+  // New MusicRequest functionality
+  public shared ({ caller }) func sendMusicRequest(toArtistId : Principal, message : Text) : async () {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can send music requests");
+    };
+
+    let timestamp = Time.now();
+    let requestId = caller.toText() # "." # toArtistId.toText() # "." # timestamp.toText();
+
+    let newRequest : MusicRequest = {
+      id = requestId;
+      fromUserId = caller;
+      toArtistId;
+      message;
+      timestamp;
+    };
+
+    musicRequests.add(requestId, newRequest);
+  };
+
+  public query ({ caller }) func getMyMusicRequests() : async [MusicRequest] {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can get their music requests");
+    };
+
+    let myRequests = musicRequests.values().toArray().filter(
+      func(request) { request.toArtistId == caller }
+    );
+
+    myRequests;
+  };
+
+  public query ({ caller }) func getMusicRequestsSentByMe() : async [MusicRequest] {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can get their sent music requests");
+    };
+
+    let sentRequests = musicRequests.values().toArray().filter(
+      func(request) { request.fromUserId == caller }
+    );
+
+    sentRequests;
+  };
+
+  // New Follows functionality
+  public shared ({ caller }) func followArtist(artistId : Principal) : async () {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can follow artists");
+    };
+
+    if (caller == artistId) {
+      Runtime.trap("Cannot follow yourself");
+    };
+
+    let current = switch (follows.get(caller)) {
+      case (null) { List.empty<Principal>() };
+      case (?list) {
+        let existing = List.empty<Principal>();
+        for (id in list.values()) {
+          existing.add(id);
+        };
+        existing;
+      };
+    };
+
+    if (current.values().any(func(id) { id == artistId })) { return () };
+
+    current.add(artistId);
+    follows.add(caller, current.toArray());
+  };
+
+  public shared ({ caller }) func unfollowArtist(artistId : Principal) : async () {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can unfollow artists");
+    };
+
+    let current = switch (follows.get(caller)) {
+      case (null) { List.empty<Principal>() };
+      case (?list) {
+        let existing = List.empty<Principal>();
+        for (id in list.values()) {
+          existing.add(id);
+        };
+        existing;
+      };
+    };
+
+    let filtered = current.filter(func(id) { id != artistId });
+    follows.add(caller, filtered.toArray());
+  };
+
+  public query ({ caller }) func isFollowing(artistId : Principal) : async Bool {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can check follows");
+    };
+
+    switch (follows.get(caller)) {
+      case (null) { false };
+      case (?followed) { followed.any(func(id) { id == artistId }) };
+    };
+  };
+
+  public query func getFollowerCount(artistId : Principal) : async Nat {
+    var count = 0;
+    for ((_, artists) in follows.entries()) {
+      if (artists.any(func(id) { id == artistId })) {
+        count += 1;
+      };
+    };
+    count;
+  };
+
+  public query ({ caller }) func getFollowedArtists() : async [Principal] {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can get their followed artists");
+    };
+    switch (follows.get(caller)) {
+      case (null) { [] };
+      case (?artists) { artists };
+    };
+  };
+
+  // New Notifications functionality
+  public query ({ caller }) func getMyNotifications() : async [Notification] {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can get notifications");
+    };
+
+    switch (notifications.get(caller)) {
+      case (null) { [] };
+      case (?notis) {
+        let count = Int.min(notis.size(), 50).toNat();
+        notis.sliceToArray(0, count);
+      };
+    };
+  };
+
+  public shared ({ caller }) func markNotificationsRead() : async () {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can mark notifications as read");
+    };
+    notifications.remove(caller);
   };
 };

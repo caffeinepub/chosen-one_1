@@ -8,7 +8,10 @@ import {
 } from "@tanstack/react-router";
 import { Footer } from "./components/Footer";
 import { Navbar } from "./components/Navbar";
+import { ArtistProfilePage } from "./pages/ArtistProfilePage";
 import { ChartsPage } from "./pages/ChartsPage";
+import { FollowingPage } from "./pages/FollowingPage";
+import { LeaderboardPage } from "./pages/LeaderboardPage";
 import { MyTracksPage } from "./pages/MyTracksPage";
 import { ProfilePage } from "./pages/ProfilePage";
 import { UploadPage } from "./pages/UploadPage";
@@ -43,6 +46,12 @@ const chartsRoute = createRoute({
   component: ChartsPage,
 });
 
+const leaderboardRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/leaderboard",
+  component: LeaderboardPage,
+});
+
 const uploadRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/upload",
@@ -61,12 +70,27 @@ const profileRoute = createRoute({
   component: ProfilePage,
 });
 
+const artistProfileRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/artist/$principalId",
+  component: ArtistProfilePage,
+});
+
+const followingRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/following",
+  component: FollowingPage,
+});
+
 /* ── Router ──────────────────────────────────────────── */
 const routeTree = rootRoute.addChildren([
   chartsRoute,
+  leaderboardRoute,
+  followingRoute,
   uploadRoute,
   myTracksRoute,
   profileRoute,
+  artistProfileRoute,
 ]);
 
 const router = createRouter({ routeTree });

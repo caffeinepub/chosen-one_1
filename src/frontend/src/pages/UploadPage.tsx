@@ -2,6 +2,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import { useNavigate } from "@tanstack/react-router";
@@ -22,6 +29,59 @@ import { LoginGate } from "../components/LoginGate";
 import { useInternetIdentity } from "../hooks/useInternetIdentity";
 import { useUploadTrack } from "../hooks/useQueries";
 
+const US_STATES = [
+  "Alabama",
+  "Alaska",
+  "Arizona",
+  "Arkansas",
+  "California",
+  "Colorado",
+  "Connecticut",
+  "Delaware",
+  "Florida",
+  "Georgia",
+  "Hawaii",
+  "Idaho",
+  "Illinois",
+  "Indiana",
+  "Iowa",
+  "Kansas",
+  "Kentucky",
+  "Louisiana",
+  "Maine",
+  "Maryland",
+  "Massachusetts",
+  "Michigan",
+  "Minnesota",
+  "Mississippi",
+  "Missouri",
+  "Montana",
+  "Nebraska",
+  "Nevada",
+  "New Hampshire",
+  "New Jersey",
+  "New Mexico",
+  "New York",
+  "North Carolina",
+  "North Dakota",
+  "Ohio",
+  "Oklahoma",
+  "Oregon",
+  "Pennsylvania",
+  "Rhode Island",
+  "South Carolina",
+  "South Dakota",
+  "Tennessee",
+  "Texas",
+  "Utah",
+  "Vermont",
+  "Virginia",
+  "Washington",
+  "West Virginia",
+  "Wisconsin",
+  "Wyoming",
+] as const;
+
 function generateId() {
   return crypto.randomUUID();
 }
@@ -40,6 +100,10 @@ export function UploadPage() {
   const [title, setTitle] = useState("");
   const [artist, setArtist] = useState("");
   const [description, setDescription] = useState("");
+  const [genre, setGenre] = useState("");
+  const [city, setCity] = useState("");
+  const [state, setState] = useState("");
+  const [region, setRegion] = useState("");
   const [audioFile, setAudioFile] = useState<File | null>(null);
   const [coverFile, setCoverFile] = useState<File | null>(null);
   const [coverPreview, setCoverPreview] = useState<string | null>(null);
@@ -108,8 +172,12 @@ export function UploadPage() {
         title,
         artist,
         description,
+        genre,
         audioBlob,
         coverBlob,
+        city,
+        state,
+        region,
         onProgress: (pct) => setProgress(pct),
       });
 
@@ -202,6 +270,99 @@ export function UploadPage() {
               className="bg-secondary border-border focus:border-gold/50 font-ui resize-none"
               data-ocid="upload.description.textarea"
             />
+          </div>
+
+          {/* Genre */}
+          <div className="space-y-1.5">
+            <Label htmlFor="genre" className="font-ui font-semibold">
+              Genre <span className="text-gold">*</span>
+            </Label>
+            <Select value={genre} onValueChange={setGenre}>
+              <SelectTrigger
+                id="genre"
+                className="bg-secondary border-border focus:border-gold/50 font-ui"
+                data-ocid="upload.genre.select"
+              >
+                <SelectValue placeholder="Select a genre…" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="Hip-Hop">Hip-Hop</SelectItem>
+                <SelectItem value="Electronic">Electronic</SelectItem>
+                <SelectItem value="Pop">Pop</SelectItem>
+                <SelectItem value="Ambient">Ambient</SelectItem>
+                <SelectItem value="Classical">Classical</SelectItem>
+                <SelectItem value="Jazz">Jazz</SelectItem>
+                <SelectItem value="Rock">Rock</SelectItem>
+                <SelectItem value="R&B">R&amp;B</SelectItem>
+                <SelectItem value="Other">Other</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* City */}
+          <div className="space-y-1.5">
+            <Label htmlFor="city" className="font-ui font-semibold">
+              City <span className="text-gold">*</span>
+            </Label>
+            <Input
+              id="city"
+              placeholder="e.g. Atlanta"
+              value={city}
+              onChange={(e) => setCity(e.target.value)}
+              required
+              className="bg-secondary border-border focus:border-gold/50 font-ui"
+              data-ocid="upload.city.input"
+            />
+          </div>
+
+          {/* State */}
+          <div className="space-y-1.5">
+            <Label htmlFor="state" className="font-ui font-semibold">
+              State <span className="text-gold">*</span>
+            </Label>
+            <Select value={state} onValueChange={setState}>
+              <SelectTrigger
+                id="state"
+                className="bg-secondary border-border focus:border-gold/50 font-ui"
+                data-ocid="upload.state.select"
+              >
+                <SelectValue placeholder="Select a state…" />
+              </SelectTrigger>
+              <SelectContent className="max-h-60">
+                {US_STATES.map((s) => (
+                  <SelectItem key={s} value={s}>
+                    {s}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Region */}
+          <div className="space-y-1.5">
+            <Label htmlFor="region" className="font-ui font-semibold">
+              Region <span className="text-gold">*</span>
+            </Label>
+            <Select value={region} onValueChange={setRegion}>
+              <SelectTrigger
+                id="region"
+                className="bg-secondary border-border focus:border-gold/50 font-ui"
+                data-ocid="upload.region.select"
+              >
+                <SelectValue placeholder="Select a region…" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="Northeast">Northeast</SelectItem>
+                <SelectItem value="Southeast">Southeast</SelectItem>
+                <SelectItem value="Midwest">Midwest</SelectItem>
+                <SelectItem value="Southwest">Southwest</SelectItem>
+                <SelectItem value="West">West</SelectItem>
+                <SelectItem value="Mid-Atlantic">Mid-Atlantic</SelectItem>
+                <SelectItem value="Pacific Northwest">
+                  Pacific Northwest
+                </SelectItem>
+              </SelectContent>
+            </Select>
           </div>
 
           {/* Audio file dropzone */}
@@ -383,6 +544,10 @@ export function UploadPage() {
               status === "success" ||
               !title ||
               !artist ||
+              !genre ||
+              !city ||
+              !state ||
+              !region ||
               !audioFile
             }
             className="w-full gap-2 bg-gold/20 text-gold hover:bg-gold/30 border border-gold/30 font-ui font-bold h-11"

@@ -11,22 +11,50 @@ import type { IDL } from '@icp-sdk/core/candid';
 import type { Principal } from '@icp-sdk/core/principal';
 
 export interface AverageRating { 'track' : Track, 'averageRating' : number }
+export interface Comment {
+  'id' : string,
+  'authorId' : Principal,
+  'text' : string,
+  'trackId' : string,
+  'timestamp' : bigint,
+}
 export type ExternalBlob = Uint8Array;
+export interface MusicRequest {
+  'id' : string,
+  'fromUserId' : Principal,
+  'message' : string,
+  'timestamp' : bigint,
+  'toArtistId' : Principal,
+}
+export interface Notification {
+  'id' : string,
+  'trackTitle' : string,
+  'trackId' : string,
+  'timestamp' : bigint,
+  'fromArtistId' : Principal,
+}
 export interface Rating { 'raterUserId' : Principal, 'score' : bigint }
 export interface Track {
   'id' : string,
+  'region' : string,
   'audioFileKey' : ExternalBlob,
   'title' : string,
   'ownerId' : Principal,
+  'city' : string,
   'ratings' : Array<Rating>,
   'description' : string,
   'uploadTimestamp' : bigint,
+  'likes' : Array<Principal>,
+  'state' : string,
+  'genre' : string,
   'artist' : string,
   'coverKey' : [] | [ExternalBlob],
 }
 export interface UserProfile {
   'profilePicKey' : [] | [ExternalBlob],
   'username' : string,
+  'bgStyle' : string,
+  'bannerKey' : [] | [ExternalBlob],
 }
 export type UserRole = { 'admin' : null } |
   { 'user' : null } |
@@ -59,23 +87,60 @@ export interface _SERVICE {
   >,
   '_caffeineStorageUpdateGatewayPrincipals' : ActorMethod<[], undefined>,
   '_initializeAccessControlWithSecret' : ActorMethod<[string], undefined>,
+  'addComment' : ActorMethod<[string, string], undefined>,
   'assignCallerUserRole' : ActorMethod<[Principal, UserRole], undefined>,
   'createOrUpdateProfile' : ActorMethod<
-    [string, [] | [ExternalBlob]],
+    [string, [] | [ExternalBlob], [] | [ExternalBlob], string],
     undefined
   >,
+  'deleteComment' : ActorMethod<[string], undefined>,
   'deleteTrack' : ActorMethod<[string], undefined>,
+  'followArtist' : ActorMethod<[Principal], undefined>,
   'getCallerProfile' : ActorMethod<[], [] | [UserProfile]>,
+  'getCallerUserProfile' : ActorMethod<[], [] | [UserProfile]>,
   'getCallerUserRole' : ActorMethod<[], UserRole>,
+  'getCommentsForTrack' : ActorMethod<[string], Array<Comment>>,
+  'getFollowedArtists' : ActorMethod<[], Array<Principal>>,
+  'getFollowerCount' : ActorMethod<[Principal], bigint>,
+  'getMusicRequestsSentByMe' : ActorMethod<[], Array<MusicRequest>>,
+  'getMyMusicRequests' : ActorMethod<[], Array<MusicRequest>>,
+  'getMyNotifications' : ActorMethod<[], Array<Notification>>,
   'getOwnTracks' : ActorMethod<[], Array<Track>>,
   'getTrackAverageRating' : ActorMethod<[string], number>,
   'getTrackById' : ActorMethod<[string], [] | [Track]>,
+  'getTracksByOwner' : ActorMethod<[Principal], Array<Track>>,
+  'getTracksFilteredByLocation' : ActorMethod<
+    [string, string, string],
+    Array<AverageRating>
+  >,
   'getTracksSortedByRating' : ActorMethod<[], Array<AverageRating>>,
+  'getTracksSortedByRatingInWindow' : ActorMethod<
+    [string],
+    Array<AverageRating>
+  >,
   'getUserProfile' : ActorMethod<[Principal], [] | [UserProfile]>,
   'isCallerAdmin' : ActorMethod<[], boolean>,
+  'isFollowing' : ActorMethod<[Principal], boolean>,
+  'likeTrack' : ActorMethod<[string], undefined>,
+  'markNotificationsRead' : ActorMethod<[], undefined>,
   'rateTrack' : ActorMethod<[string, bigint], undefined>,
+  'saveCallerUserProfile' : ActorMethod<[UserProfile], undefined>,
+  'sendMusicRequest' : ActorMethod<[Principal, string], undefined>,
+  'unfollowArtist' : ActorMethod<[Principal], undefined>,
+  'unlikeTrack' : ActorMethod<[string], undefined>,
   'uploadTrack' : ActorMethod<
-    [string, string, string, string, ExternalBlob, [] | [ExternalBlob]],
+    [
+      string,
+      string,
+      string,
+      string,
+      string,
+      ExternalBlob,
+      [] | [ExternalBlob],
+      string,
+      string,
+      string,
+    ],
     undefined
   >,
 }
