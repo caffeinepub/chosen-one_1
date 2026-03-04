@@ -33,6 +33,7 @@ import {
   PlayCircle,
   Send,
   TrendingUp,
+  Users,
 } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { useState } from "react";
@@ -41,6 +42,7 @@ import type { AverageRating } from "../backend.d";
 import { CommentsSection } from "../components/CommentsSection";
 import { StarRating } from "../components/StarRating";
 import { type QueueTrack, usePlayer } from "../contexts/PlayerContext";
+import { useGlobalListeners } from "../hooks/useGlobalListeners";
 import { useInternetIdentity } from "../hooks/useInternetIdentity";
 import { useLiveListeners } from "../hooks/useLiveListeners";
 import {
@@ -787,6 +789,7 @@ function ChartsList({
 }
 
 export function ChartsPage() {
+  const globalListeners = useGlobalListeners();
   const [timePeriod, setTimePeriod] = useState<TimePeriod>("daily");
   const [locationScope, setLocationScope] =
     useState<LocationScope>("nationwide");
@@ -864,6 +867,28 @@ export function ChartsPage() {
             The exclusive leaderboard for AI-generated music. Drop your track,
             get rated by the community, claim the throne.
           </motion.p>
+          <motion.div
+            initial={{ opacity: 0, y: 6 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.15 }}
+            className="mt-5 inline-flex items-center gap-2.5 rounded-full bg-black/30 border border-green-500/30 backdrop-blur-sm px-4 py-2"
+            data-ocid="charts.global_listeners.panel"
+          >
+            <span className="relative flex h-2.5 w-2.5 shrink-0">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" />
+              <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-green-500" />
+            </span>
+            <Users className="h-3.5 w-3.5 text-green-400 shrink-0" />
+            <span className="text-sm font-ui font-semibold text-green-300">
+              <span className="tabular-nums">
+                {globalListeners.toLocaleString()}
+              </span>
+              <span className="text-green-400/80">
+                {" "}
+                people listening right now
+              </span>
+            </span>
+          </motion.div>
         </div>
       </div>
 

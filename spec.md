@@ -1,23 +1,21 @@
 # Chosen One
 
 ## Current State
-Full-stack AI music charts app with charts, upload, profiles, follows, playlists, global player bar, and comments. The global player plays tracks with a bottom bar. Track cards show rank, title, artist, rating, likes, comments, and a play button.
+ChartsPage has a hero banner with a title, subtitle, and two badges (Live Charts, Top 100). The `useLiveListeners` hook simulates per-track listener counts based on a hash of track ID. Individual track cards show a live listener count only when that track is the currently playing one.
 
 ## Requested Changes (Diff)
 
 ### Add
-- Live listeners count badge on the currently-playing track card -- shows a pulsing green dot and "X listening now" count
-- A `useLiveListeners` hook that generates a realistic-looking live count for a given track ID (simulated: seeded from track ID + current minute, small increments to simulate movement, polled every 15s)
-- The badge also appears in the GlobalPlayerBar on the currently-playing track info section
+- A global "X people listening right now" counter displayed in the hero banner of the charts page.
+- A `useGlobalListeners` hook (or inline logic) that produces a simulated global count, separate from per-track counts. It should start at a realistic aggregate number (e.g. 800–1500) and fluctuate every ~10 seconds to feel live.
 
 ### Modify
-- `ChartsPage.tsx` TrackCard: when the track is the currently playing one, show the live listeners badge inline in the header row
-- `GlobalPlayerBar.tsx`: show the live listeners count beneath track title/artist in the left info section
+- The hero banner section in `ChartsPage` to include the global listener counter below or alongside the existing badges, styled with a pulsing green dot and a formatted number like "1,247 people listening right now".
 
 ### Remove
-- Nothing removed
+- Nothing removed.
 
 ## Implementation Plan
-1. Create `src/frontend/src/hooks/useLiveListeners.ts` -- a hook that takes a trackId and returns a simulated live listener count. Uses a deterministic seed (hash of trackId + current 15-minute bucket) so different tracks have different counts, and adds small ±random deltas on each 15s poll tick to simulate live movement. Count range: 5–350.
-2. Update `ChartsPage.tsx` TrackCard: import the hook, show a green pulsing dot + "X listening" badge when `isCurrentTrack` is true.
-3. Update `GlobalPlayerBar.tsx`: import the hook, show a compact "● X listening" line below the artist name when a track is playing.
+1. Add a `useGlobalListeners` hook in `src/frontend/src/hooks/useGlobalListeners.ts` that returns a simulated global listener count (seed ~1000–1500, fluctuates ±50 every 10s).
+2. In `ChartsPage`, import and call `useGlobalListeners`.
+3. Render the counter in the hero banner section, below the title and description, with a pulsing green dot, formatted number, and "people listening right now" label. Style to match the existing gold/green aesthetic.
