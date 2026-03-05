@@ -10,6 +10,7 @@ import type { Principal } from "@icp-sdk/core/principal";
 import { Link, useLocation } from "@tanstack/react-router";
 import {
   Bell,
+  CornerDownRight,
   ListMusic,
   LogIn,
   LogOut,
@@ -23,6 +24,7 @@ import {
 import { motion } from "motion/react";
 import { useState } from "react";
 import type { Notification } from "../backend.d";
+import { Variant_newTrack_requestReply } from "../backend.d";
 import { useInternetIdentity } from "../hooks/useInternetIdentity";
 import {
   useMarkNotificationsRead,
@@ -56,23 +58,55 @@ function NotificationItem({
     artistProfile?.username ||
     `${notification.fromArtistId.toString().slice(0, 8)}…`;
 
+  const isRequestReply =
+    notification.notifType === Variant_newTrack_requestReply.requestReply;
+
+  const truncatedReply =
+    notification.replyText && notification.replyText.length > 60
+      ? `${notification.replyText.slice(0, 60)}…`
+      : notification.replyText;
+
   return (
     <div
       className="px-3 py-2.5 rounded-lg hover:bg-secondary/60 transition-colors"
       data-ocid={`navbar.notifications.item.${index + 1}`}
     >
       <div className="flex items-start gap-2">
-        <div className="h-7 w-7 rounded-full bg-gold/15 border border-gold/25 flex items-center justify-center shrink-0 mt-0.5">
-          <Music2 className="h-3.5 w-3.5 text-gold/80" />
-        </div>
+        {isRequestReply ? (
+          <div className="h-7 w-7 rounded-full bg-violet-500/15 border border-violet-500/25 flex items-center justify-center shrink-0 mt-0.5">
+            <CornerDownRight className="h-3.5 w-3.5 text-violet-400" />
+          </div>
+        ) : (
+          <div className="h-7 w-7 rounded-full bg-gold/15 border border-gold/25 flex items-center justify-center shrink-0 mt-0.5">
+            <Music2 className="h-3.5 w-3.5 text-gold/80" />
+          </div>
+        )}
         <div className="flex-1 min-w-0">
-          <p className="text-xs font-ui leading-snug text-foreground">
-            <span className="font-semibold text-gold">{artistName}</span>{" "}
-            dropped a new track
-          </p>
-          <p className="text-xs font-ui font-medium text-muted-foreground truncate mt-0.5">
-            "{notification.trackTitle}"
-          </p>
+          {isRequestReply ? (
+            <>
+              <p className="text-xs font-ui leading-snug text-foreground">
+                <span className="font-semibold text-violet-400">
+                  {artistName}
+                </span>{" "}
+                replied to your request
+              </p>
+              {truncatedReply && (
+                <p className="text-xs font-ui text-muted-foreground italic truncate mt-0.5 pl-1 border-l-2 border-violet-500/40">
+                  "{truncatedReply}"
+                </p>
+              )}
+            </>
+          ) : (
+            <>
+              <p className="text-xs font-ui leading-snug text-foreground">
+                <span className="font-semibold text-gold">{artistName}</span>{" "}
+                dropped a new track
+              </p>
+              <p className="text-xs font-ui font-medium text-muted-foreground truncate mt-0.5">
+                "{notification.trackTitle}"
+              </p>
+            </>
+          )}
           <p className="text-[10px] font-ui text-muted-foreground/60 mt-0.5">
             {relativeTime(notification.timestamp)}
           </p>
@@ -259,7 +293,8 @@ export function Navbar() {
                       All caught up
                     </p>
                     <p className="text-xs font-ui text-muted-foreground/60">
-                      New tracks from followed artists will appear here
+                      New track drops and request replies from artists will
+                      appear here
                     </p>
                   </div>
                 ) : (

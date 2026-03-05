@@ -410,7 +410,9 @@ export function ArtistProfilePage() {
   const bannerUrl = profile?.bannerKey?.getDirectURL();
   const picUrl = profile?.profilePicKey?.getDirectURL();
   const username = profile?.username || "Unknown Artist";
-  const bgStyle = (profile?.bgStyle as BgStyle) ?? "dark";
+  const rawBgStyle = profile?.bgStyle ?? "dark";
+  const bgStyle = (rawBgStyle.split("||")[0] as BgStyle) ?? "dark";
+  const bio = rawBgStyle.split("||")[1] ?? "";
   const principalShort = principalId ? `${principalId.slice(0, 12)}…` : "";
 
   const sortedTracks = [...(tracks ?? [])].sort((a, b) => {
@@ -593,6 +595,13 @@ export function ArtistProfilePage() {
               <ChallengeArtistButton defenderPrincipalId={principalId} />
             )}
           </div>
+
+          {/* Bio */}
+          {bio && (
+            <p className="text-sm text-foreground/70 font-ui leading-relaxed mt-3 border-t border-border/30 pt-3">
+              {bio}
+            </p>
+          )}
         </div>
       </motion.div>
 

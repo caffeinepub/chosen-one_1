@@ -26,6 +26,7 @@ import { useCallback, useRef, useState } from "react";
 import { toast } from "sonner";
 import { ExternalBlob } from "../backend";
 import { LoginGate } from "../components/LoginGate";
+import { useActor } from "../hooks/useActor";
 import { useInternetIdentity } from "../hooks/useInternetIdentity";
 import { useUploadTrack } from "../hooks/useQueries";
 
@@ -93,7 +94,8 @@ function formatBytes(bytes: number) {
 }
 
 export function UploadPage() {
-  const { identity } = useInternetIdentity();
+  const { identity, isInitializing } = useInternetIdentity();
+  const { isFetching: isActorFetching } = useActor();
   const navigate = useNavigate();
   const uploadMutation = useUploadTrack();
 
@@ -194,10 +196,28 @@ export function UploadPage() {
     }
   };
 
-  if (!identity) {
+  // Wait for auth client to finish initializing before deciding to show login gate
+  if (isInitializing) {
+    return (
+      <main className="container py-8 flex items-center justify-center min-h-[40vh]">
+        <Loader2 className="h-8 w-8 animate-spin text-gold" />
+      </main>
+    );
+  }
+
+  if (!identity || identity.getPrincipal().isAnonymous()) {
     return (
       <main className="container py-8">
         <LoginGate message="Sign in to upload your AI music to the charts" />
+      </main>
+    );
+  }
+
+  // Identity is set but the authenticated actor is still initializing
+  if (isActorFetching) {
+    return (
+      <main className="container py-8 flex items-center justify-center min-h-[40vh]">
+        <Loader2 className="h-8 w-8 animate-spin text-gold" />
       </main>
     );
   }

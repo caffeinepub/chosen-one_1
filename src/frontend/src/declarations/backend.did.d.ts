@@ -55,9 +55,13 @@ export interface MusicRequest {
 }
 export interface Notification {
   'id' : string,
+  'requestId' : [] | [string],
+  'notifType' : { 'newTrack' : null } |
+    { 'requestReply' : null },
   'trackTitle' : string,
   'trackId' : string,
   'timestamp' : bigint,
+  'replyText' : [] | [string],
   'fromArtistId' : Principal,
 }
 export interface Rating { 'raterUserId' : Principal, 'score' : bigint }

@@ -36,10 +36,12 @@ import {
   Play,
   PlayCircle,
   Rocket,
+  Search,
   Send,
   Star,
   TrendingUp,
   Users,
+  X,
 } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { useState } from "react";
@@ -1106,11 +1108,13 @@ function ChartsList({
   locationScope,
   locationValue,
   selectedGenre,
+  searchQuery,
 }: {
   windowType: string;
   locationScope: LocationScope;
   locationValue: string;
   selectedGenre: string | null;
+  searchQuery: string;
 }) {
   const player = usePlayer();
 
@@ -1150,7 +1154,7 @@ function ChartsList({
   // Cap at 100
   const charts = (data ?? []).slice(0, 100);
 
-  const filteredCharts =
+  const genreFiltered =
     selectedGenre == null
       ? charts
       : charts.filter(
@@ -1158,6 +1162,15 @@ function ChartsList({
             entry.track.genre === selectedGenre ||
             (selectedGenre === "Unknown" && entry.track.genre === "Unknown"),
         );
+
+  const q = searchQuery.trim().toLowerCase();
+  const filteredCharts = q
+    ? genreFiltered.filter(
+        (entry) =>
+          entry.track.title.toLowerCase().includes(q) ||
+          entry.track.artist.toLowerCase().includes(q),
+      )
+    : genreFiltered;
 
   const queueTracks = filteredCharts.map(toQueueTrack);
 
@@ -1215,11 +1228,11 @@ function ChartsList({
           <Music2 className="h-6 w-6 text-gold" />
         </div>
         <div className="space-y-1">
-          <h3 className="font-display font-bold text-lg">
-            No tracks match this filter
-          </h3>
+          <h3 className="font-display font-bold text-lg">No tracks match</h3>
           <p className="text-muted-foreground text-sm font-ui">
-            Try a different genre or location
+            {q
+              ? "Try a different search term, genre, or location"
+              : "Try a different genre or location"}
           </p>
         </div>
       </motion.div>
@@ -1268,6 +1281,7 @@ export function ChartsPage() {
   const [selectedState, setSelectedState] = useState<string>("");
   const [cityInput, setCityInput] = useState<string>("");
   const [selectedGenre, setSelectedGenre] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState<string>("");
 
   // Derive the location value to pass to the query
   const locationValue =
@@ -1556,11 +1570,40 @@ export function ChartsPage() {
         </div>
       </motion.div>
 
+      {/* ── Search Bar ────────────────────────────────────── */}
+      <motion.div
+        initial={{ opacity: 0, y: 6 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.18 }}
+      >
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+          <Input
+            placeholder="Search tracks or artists…"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="pl-9 pr-9 bg-secondary border-border focus:border-gold/50 font-ui"
+            data-ocid="charts.search.input"
+          />
+          {searchQuery && (
+            <button
+              type="button"
+              onClick={() => setSearchQuery("")}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+              aria-label="Clear search"
+              data-ocid="charts.search.clear_button"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          )}
+        </div>
+      </motion.div>
+
       {/* ── Chart heading ─────────────────────────────────── */}
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
-        transition={{ delay: 0.18 }}
+        transition={{ delay: 0.2 }}
         className="flex items-center justify-between"
       >
         <h2 className="font-display font-bold text-lg text-foreground">
@@ -1576,6 +1619,11 @@ export function ChartsPage() {
               · {selectedGenre}
             </span>
           )}
+          {searchQuery.trim() && (
+            <span className="text-muted-foreground font-normal text-base ml-1">
+              · "{searchQuery.trim()}"
+            </span>
+          )}
         </h2>
       </motion.div>
 
@@ -1585,6 +1633,7 @@ export function ChartsPage() {
         locationScope={locationScope}
         locationValue={locationValue}
         selectedGenre={selectedGenre}
+        searchQuery={searchQuery}
       />
     </main>
   );

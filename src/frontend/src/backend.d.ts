@@ -71,9 +71,12 @@ export interface CommentReply {
 }
 export interface Notification {
     id: string;
+    requestId?: string;
+    notifType: Variant_newTrack_requestReply;
     trackTitle: string;
     trackId: string;
     timestamp: bigint;
+    replyText?: string;
     fromArtistId: Principal;
 }
 export interface Battle {
@@ -109,6 +112,10 @@ export enum UserRole {
     admin = "admin",
     user = "user",
     guest = "guest"
+}
+export enum Variant_newTrack_requestReply {
+    newTrack = "newTrack",
+    requestReply = "requestReply"
 }
 export interface backendInterface {
     addComment(trackId: string, text: string): Promise<void>;

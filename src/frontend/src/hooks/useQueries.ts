@@ -92,7 +92,8 @@ export function useCallerProfile() {
 
 /* ── Upload Track ────────────────────────────────────── */
 export function useUploadTrack() {
-  const { actor } = useActor();
+  const { actor, isFetching } = useActor();
+  const { identity } = useInternetIdentity();
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async ({
@@ -120,7 +121,12 @@ export function useUploadTrack() {
       region: string;
       onProgress?: (pct: number) => void;
     }) => {
-      if (!actor) throw new Error("Not authenticated");
+      if (!actor && isFetching)
+        throw new Error(
+          "Authentication is still loading, please wait a moment and try again.",
+        );
+      if (!actor || !identity || identity.getPrincipal().isAnonymous())
+        throw new Error("Not authenticated. Please sign in before uploading.");
       const audioWithProgress = onProgress
         ? audioBlob.withUploadProgress(onProgress)
         : audioBlob;

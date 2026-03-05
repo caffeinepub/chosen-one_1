@@ -1,26 +1,27 @@
 # Chosen One
 
 ## Current State
-Full-stack AI music charts app with Charts, Leaderboard, Upload, My Tracks, Profile, Artist Profile, Following, and Battles pages. The `useAllArtists` hook already exists in `useQueries.ts` and aggregates unique artists from the charts data. No artist directory or search page exists yet.
+The app has a notification system for followers when an artist drops a new track. Artists can also reply to fan music requests via `replyToMusicRequest`. Fans can send requests and see replies via `getMyRequestReplies`. There is no notification when an artist replies to a fan's request.
 
 ## Requested Changes (Diff)
 
 ### Add
-- A new "Artists" page (`/artists`) accessible from the navbar
-- Search bar on the Artists page that filters artists by name in real time
-- Artists displayed in alphabetical order (A–Z)
-- Each artist card shows profile picture (avatar fallback if none), username, and a link to their public artist profile page
-- Empty state when no artists have uploaded yet
-- No-results state when the search query matches nothing
+- A new notification variant for request replies (type = "requestReply") carrying the artist name, original request message snippet, and reply text
+- Backend logic to create a notification for the fan (fromUserId) when an artist calls `replyToMusicRequest`
+- Frontend display of "request reply" notifications in the navbar notification bell, distinct from "new track" notifications
 
 ### Modify
-- Navbar: add "Artists" link between Charts and Following (or at a logical position)
-- `App.tsx`: register the new `/artists` route
+- `Notification` type in backend: add a `notifType` field (variant: `#newTrack` or `#requestReply`) and optional `replyText` and `requestId` fields
+- `replyToMusicRequest` function: after saving the reply, create a notification for the fan who sent the request
+- Navbar `NotificationItem`: render differently based on notification type — for `requestReply` show a message icon and "replied to your request" text with the reply snippet
+- Empty state description in navbar: updated to mention both track drops and request replies
 
 ### Remove
-- Nothing
+- Nothing removed
 
 ## Implementation Plan
-1. Create `src/frontend/src/pages/ArtistsPage.tsx` — uses `useAllArtists` hook, local search state, filters and sorts A–Z, renders artist cards with avatar + username + profile link
-2. Update `App.tsx` — import `ArtistsPage`, add `artistsRoute` at path `/artists`, add to `routeTree`
-3. Update `Navbar.tsx` — add "Artists" nav link to the navigation
+1. Update `Notification` type in `main.mo` to add variant `notifType` field (`#newTrack` or `#requestReply`), optional `replyText` (Text) and `requestId` (Text)
+2. Update `notificationsSendToFollowers` to set `notifType = #newTrack`
+3. In `replyToMusicRequest`, after saving the reply, create a notification for `request.fromUserId` with `notifType = #requestReply`, the reply text, and requestId
+4. Update `backend.d.ts` to reflect new Notification shape
+5. Update Navbar `NotificationItem` to branch on `notifType` and render a distinct "replied to your request" card for `requestReply` notifications

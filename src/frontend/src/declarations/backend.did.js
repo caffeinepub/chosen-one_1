@@ -74,9 +74,15 @@ export const MusicRequest = IDL.Record({
 });
 export const Notification = IDL.Record({
   'id' : IDL.Text,
+  'requestId' : IDL.Opt(IDL.Text),
+  'notifType' : IDL.Variant({
+    'newTrack' : IDL.Null,
+    'requestReply' : IDL.Null,
+  }),
   'trackTitle' : IDL.Text,
   'trackId' : IDL.Text,
   'timestamp' : IDL.Int,
+  'replyText' : IDL.Opt(IDL.Text),
   'fromArtistId' : IDL.Principal,
 });
 export const RequestReply = IDL.Record({
@@ -306,9 +312,15 @@ export const idlFactory = ({ IDL }) => {
   });
   const Notification = IDL.Record({
     'id' : IDL.Text,
+    'requestId' : IDL.Opt(IDL.Text),
+    'notifType' : IDL.Variant({
+      'newTrack' : IDL.Null,
+      'requestReply' : IDL.Null,
+    }),
     'trackTitle' : IDL.Text,
     'trackId' : IDL.Text,
     'timestamp' : IDL.Int,
+    'replyText' : IDL.Opt(IDL.Text),
     'fromArtistId' : IDL.Principal,
   });
   const RequestReply = IDL.Record({

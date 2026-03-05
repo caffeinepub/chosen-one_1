@@ -500,6 +500,7 @@ export function ProfilePage() {
   const followerNum = followerCount ? Number(followerCount) : 0;
 
   const [username, setUsername] = useState("");
+  const [bio, setBio] = useState("");
   const [picFile, setPicFile] = useState<File | null>(null);
   const [picPreview, setPicPreview] = useState<string | null>(null);
   const [bannerFile, setBannerFile] = useState<File | null>(null);
@@ -519,9 +520,11 @@ export function ProfilePage() {
       if (profile.bannerKey) {
         setBannerPreview(profile.bannerKey.getDirectURL());
       }
-      if (profile.bgStyle && BG_STYLES.some((s) => s.id === profile.bgStyle)) {
-        setBgStyle(profile.bgStyle as BgStyle);
+      const [rawBg, rawBio] = (profile.bgStyle ?? "").split("||");
+      if (rawBg && BG_STYLES.some((s) => s.id === rawBg)) {
+        setBgStyle(rawBg as BgStyle);
       }
+      setBio(rawBio ?? "");
     }
   }, [profile]);
 
@@ -562,7 +565,7 @@ export function ProfilePage() {
         username,
         picBlob,
         bannerBlob,
-        bgStyle,
+        bgStyle: bgStyle + (bio.trim() ? `||${bio.trim()}` : ""),
       });
       setSaveStatus("success");
       setPicFile(null);
@@ -702,6 +705,11 @@ export function ProfilePage() {
                     </p>
                   </div>
                 </div>
+                {bio && (
+                  <p className="text-sm text-foreground/70 font-ui leading-relaxed mt-2">
+                    {bio}
+                  </p>
+                )}
               </div>
             </div>
 
@@ -793,6 +801,26 @@ export function ProfilePage() {
                 className="bg-secondary border-border focus:border-gold/50 font-ui"
                 data-ocid="profile.username.input"
               />
+            </div>
+
+            {/* ── Bio ────────────────────────────────────── */}
+            <div className="space-y-1.5">
+              <Label htmlFor="bio" className="font-ui font-semibold">
+                Bio
+              </Label>
+              <Textarea
+                id="bio"
+                placeholder="Tell fans about yourself…"
+                value={bio}
+                onChange={(e) => setBio(e.target.value)}
+                maxLength={300}
+                rows={3}
+                className="resize-none bg-secondary border-border focus-visible:border-gold/50 focus-visible:ring-gold/20 font-ui placeholder:text-muted-foreground/50"
+                data-ocid="profile.bio.textarea"
+              />
+              <p className="text-xs text-muted-foreground font-ui text-right">
+                {bio.length}/300
+              </p>
             </div>
 
             {/* Principal (read-only info) */}

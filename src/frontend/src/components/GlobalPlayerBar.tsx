@@ -20,6 +20,8 @@ import {
   ChevronDown,
   ChevronUp,
   ListMusic,
+  Maximize2,
+  Minimize2,
   Music2,
   Pause,
   Play,
@@ -33,7 +35,7 @@ import {
   X,
 } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { FaFacebook, FaTelegram, FaTwitter, FaWhatsapp } from "react-icons/fa";
 import { toast } from "sonner";
 import { type RepeatMode, usePlayer } from "../contexts/PlayerContext";
@@ -79,6 +81,8 @@ export function GlobalPlayerBar() {
   const [queueOpen, setQueueOpen] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
   const [isFullSize, setIsFullSize] = useState(false);
+  const [isNativeFullscreen, setIsNativeFullscreen] = useState(false);
+  const fullsizeRef = useRef<HTMLDivElement>(null);
 
   const currentTrack = currentIndex >= 0 ? queue[currentIndex] : null;
   const listenerCount = useLiveListeners(currentTrack?.id ?? "");
@@ -113,6 +117,25 @@ export function GlobalPlayerBar() {
     return () => window.removeEventListener("keydown", handler);
   }, [isFullSize]);
 
+  // Sync native fullscreen state
+  useEffect(() => {
+    const handler = () => setIsNativeFullscreen(!!document.fullscreenElement);
+    document.addEventListener("fullscreenchange", handler);
+    return () => document.removeEventListener("fullscreenchange", handler);
+  }, []);
+
+  const toggleFullscreen = async () => {
+    try {
+      if (!document.fullscreenElement) {
+        await fullsizeRef.current?.requestFullscreen();
+      } else {
+        await document.exitFullscreen();
+      }
+    } catch {
+      // silently ignore errors (e.g. fullscreen not supported)
+    }
+  };
+
   if (queue.length === 0) return null;
 
   const progress = duration > 0 ? currentTime : 0;
@@ -129,6 +152,7 @@ export function GlobalPlayerBar() {
       <AnimatePresence>
         {isFullSize && (
           <motion.div
+            ref={fullsizeRef}
             key="fullsize-player"
             initial={{ y: "100%" }}
             animate={{ y: 0 }}
@@ -140,7 +164,26 @@ export function GlobalPlayerBar() {
           >
             {/* Top bar */}
             <div className="flex items-center justify-between px-6 pt-6 pb-2 shrink-0">
-              <div className="w-10" aria-hidden="true" />
+              {/* Fullscreen toggle — left side */}
+              <button
+                type="button"
+                onClick={toggleFullscreen}
+                aria-label={
+                  isNativeFullscreen ? "Exit fullscreen" : "Enter fullscreen"
+                }
+                data-ocid="player.fullsize.fullscreen.toggle"
+                className={cn(
+                  "h-10 w-10 rounded-full flex items-center justify-center",
+                  "text-muted-foreground hover:text-foreground transition-colors",
+                  "hover:bg-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold/50",
+                )}
+              >
+                {isNativeFullscreen ? (
+                  <Minimize2 className="h-5 w-5" />
+                ) : (
+                  <Maximize2 className="h-5 w-5" />
+                )}
+              </button>
               <p className="text-xs uppercase tracking-widest font-ui text-muted-foreground/60 select-none">
                 Now Playing
               </p>
@@ -428,6 +471,36 @@ export function GlobalPlayerBar() {
               )}
             >
               <ChevronUp className="h-4 w-4" />
+            </button>
+
+            {/* Fullscreen toggle in mini bar */}
+            <button
+              type="button"
+              onClick={() => {
+                if (!isFullSize) {
+                  setIsFullSize(true);
+                  setTimeout(() => {
+                    void fullsizeRef.current?.requestFullscreen();
+                  }, 50);
+                } else {
+                  void toggleFullscreen();
+                }
+              }}
+              aria-label={
+                isNativeFullscreen ? "Exit fullscreen" : "Enter fullscreen"
+              }
+              data-ocid="player.mini.fullscreen.toggle"
+              className={cn(
+                "p-1.5 rounded-lg shrink-0 transition-all duration-200",
+                "text-muted-foreground hover:text-gold hover:bg-gold/10",
+                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold/50",
+              )}
+            >
+              {isNativeFullscreen ? (
+                <Minimize2 className="h-4 w-4" />
+              ) : (
+                <Maximize2 className="h-4 w-4" />
+              )}
             </button>
 
             {/* Cover art */}

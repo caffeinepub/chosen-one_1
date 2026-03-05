@@ -14,9 +14,11 @@ import MixinStorage "blob-storage/Mixin";
 import AccessControl "authorization/access-control";
 import Float "mo:core/Float";
 import List "mo:core/List";
+import Migration "migration";
 
 import MixinAuthorization "authorization/MixinAuthorization";
 
+(with migration = Migration.run)
 actor {
   // Mixin components
   include MixinStorage();
@@ -106,13 +108,19 @@ actor {
     timestamp : Int;
   };
 
-  // New Notification type
+  // New Notification type (with notifType)
   type Notification = {
     id : Text;
     fromArtistId : Principal;
     trackId : Text;
     trackTitle : Text;
     timestamp : Int;
+    notifType : {
+      #newTrack;
+      #requestReply;
+    };
+    replyText : ?Text;
+    requestId : ?Text;
   };
 
   // Battle system types
@@ -294,6 +302,9 @@ actor {
         trackId;
         trackTitle;
         timestamp;
+        notifType = #newTrack;
+        replyText = null;
+        requestId = null;
       };
 
       let existingNotifications = switch (notifications.get(follower)) {
@@ -755,6 +766,25 @@ actor {
         };
 
         requestReplies.add(requestId, newRequestReply);
+
+        // Create a notification for the fan
+        let notification : Notification = {
+          id = requestId # ".reply." # caller.toText() # "." # timestamp.toText();
+          fromArtistId = caller;
+          trackId = "";
+          trackTitle = "";
+          timestamp;
+          notifType = #requestReply;
+          replyText = ?replyText;
+          requestId = ?requestId;
+        };
+
+        let existingNotifications = switch (notifications.get(request.fromUserId)) {
+          case (null) { [] };
+          case (?n) { n };
+        };
+
+        notifications.add(request.fromUserId, [notification].concat(existingNotifications));
       };
     };
   };
