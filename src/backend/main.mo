@@ -14,11 +14,11 @@ import MixinStorage "blob-storage/Mixin";
 import AccessControl "authorization/access-control";
 import Float "mo:core/Float";
 import List "mo:core/List";
-import Migration "migration";
+
 
 import MixinAuthorization "authorization/MixinAuthorization";
 
-(with migration = Migration.run)
+
 actor {
   // Mixin components
   include MixinStorage();

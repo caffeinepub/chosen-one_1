@@ -11,6 +11,7 @@ import { Link, useLocation } from "@tanstack/react-router";
 import {
   Bell,
   CornerDownRight,
+  Eye,
   ListMusic,
   LogIn,
   LogOut,
@@ -27,6 +28,10 @@ import type { Notification } from "../backend.d";
 import { Variant_newTrack_requestReply } from "../backend.d";
 import { useInternetIdentity } from "../hooks/useInternetIdentity";
 import {
+  type ProfileViewNotif,
+  useMyProfileViewNotifications,
+} from "../hooks/useProfileViewNotifications";
+import {
   useMarkNotificationsRead,
   useMyNotifications,
   usePendingBattlesForMe,
@@ -36,6 +41,14 @@ import {
 /* ── Relative time ───────────────────────────────────── */
 function relativeTime(ns: bigint): string {
   const ms = Number(ns / BigInt(1_000_000));
+  const seconds = Math.floor((Date.now() - ms) / 1000);
+  if (seconds < 60) return "just now";
+  if (seconds < 3600) return `${Math.floor(seconds / 60)}m ago`;
+  if (seconds < 86400) return `${Math.floor(seconds / 3600)}h ago`;
+  return `${Math.floor(seconds / 86400)}d ago`;
+}
+
+function relativeTimeMs(ms: number): string {
   const seconds = Math.floor((Date.now() - ms) / 1000);
   if (seconds < 60) return "just now";
   if (seconds < 3600) return `${Math.floor(seconds / 60)}m ago`;
@@ -116,6 +129,39 @@ function NotificationItem({
   );
 }
 
+/* ── Profile view notification item ─────────────────── */
+function ProfileViewNotifItem({
+  notif,
+  index,
+}: {
+  notif: ProfileViewNotif;
+  index: number;
+}) {
+  return (
+    <div
+      className="px-3 py-2.5 rounded-lg hover:bg-secondary/60 transition-colors"
+      data-ocid={`navbar.notifications.profile_view.item.${index + 1}`}
+    >
+      <div className="flex items-start gap-2">
+        <div className="h-7 w-7 rounded-full bg-purple-500/15 border border-purple-500/25 flex items-center justify-center shrink-0 mt-0.5">
+          <Eye className="h-3.5 w-3.5 text-purple-400" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-xs font-ui leading-snug text-foreground">
+            <span className="font-semibold text-purple-400">
+              {notif.viewerName}
+            </span>{" "}
+            viewed your profile
+          </p>
+          <p className="text-[10px] font-ui text-muted-foreground/60 mt-0.5">
+            {relativeTimeMs(notif.timestamp)}
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 const navLinks = [
   { to: "/", label: "Charts", icon: ListMusic, ocid: "nav.charts.link" },
   {
@@ -155,12 +201,41 @@ export function Navbar() {
   const markRead = useMarkNotificationsRead();
   const { data: pendingBattles } = usePendingBattlesForMe();
 
-  const unreadCount = notifications?.length ?? 0;
+  // Profile view notifications (localStorage-only, client-side)
+  const {
+    notifications: profileViewNotifs,
+    unreadCount: pvUnreadCount,
+    markAllRead: markPVRead,
+  } = useMyProfileViewNotifications();
+
+  const backendUnreadCount = notifications?.length ?? 0;
+  const unreadCount = backendUnreadCount + pvUnreadCount;
   const pendingBattleCount = pendingBattles?.length ?? 0;
+
+  // Build a merged, time-sorted list for display
+  type MergedNotif =
+    | { kind: "backend"; item: Notification; ts: number }
+    | { kind: "profileView"; item: ProfileViewNotif; ts: number };
+
+  const mergedNotifs: MergedNotif[] = [
+    ...(notifications ?? []).map((n) => ({
+      kind: "backend" as const,
+      item: n,
+      ts: Number(n.timestamp / BigInt(1_000_000)),
+    })),
+    ...profileViewNotifs.map((n) => ({
+      kind: "profileView" as const,
+      item: n,
+      ts: n.timestamp,
+    })),
+  ].sort((a, b) => b.ts - a.ts);
 
   function handleMarkRead() {
     markRead.mutate(undefined, {
-      onSuccess: () => setNotifOpen(false),
+      onSuccess: () => {
+        markPVRead();
+        setNotifOpen(false);
+      },
     });
   }
 
@@ -293,20 +368,28 @@ export function Navbar() {
                       All caught up
                     </p>
                     <p className="text-xs font-ui text-muted-foreground/60">
-                      New track drops and request replies from artists will
-                      appear here
+                      New track drops, replies, and profile views will appear
+                      here
                     </p>
                   </div>
                 ) : (
                   <ScrollArea className="max-h-80">
                     <div className="p-2 space-y-0.5">
-                      {notifications?.map((notif, idx) => (
-                        <NotificationItem
-                          key={notif.id}
-                          notification={notif}
-                          index={idx}
-                        />
-                      ))}
+                      {mergedNotifs.map((entry, idx) =>
+                        entry.kind === "backend" ? (
+                          <NotificationItem
+                            key={entry.item.id}
+                            notification={entry.item}
+                            index={idx}
+                          />
+                        ) : (
+                          <ProfileViewNotifItem
+                            key={entry.item.id}
+                            notif={entry.item}
+                            index={idx}
+                          />
+                        ),
+                      )}
                     </div>
                   </ScrollArea>
                 )}

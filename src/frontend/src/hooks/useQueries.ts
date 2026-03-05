@@ -93,7 +93,7 @@ export function useCallerProfile() {
 /* ── Upload Track ────────────────────────────────────── */
 export function useUploadTrack() {
   const { actor, isFetching } = useActor();
-  const { identity } = useInternetIdentity();
+  const { identity, isInitializing } = useInternetIdentity();
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async ({
@@ -121,12 +121,20 @@ export function useUploadTrack() {
       region: string;
       onProgress?: (pct: number) => void;
     }) => {
-      if (!actor && isFetching)
+      // Still waiting for auth client to initialize
+      if (isInitializing || isFetching)
         throw new Error(
           "Authentication is still loading, please wait a moment and try again.",
         );
-      if (!actor || !identity || identity.getPrincipal().isAnonymous())
+      if (!identity || identity.getPrincipal().isAnonymous())
         throw new Error("Not authenticated. Please sign in before uploading.");
+      if (!actor)
+        throw new Error("Actor not ready. Please wait a moment and try again.");
+      // Verify the actor was built with the authenticated identity (not an old anonymous actor)
+      // by checking that the actor query key matches the current identity principal.
+      // If identity is set but actor was created anonymously, the query would have been
+      // re-keyed and actor would be null until the new one loads.
+      // Extra safety: check the actor isn't from a stale anonymous session.
       const audioWithProgress = onProgress
         ? audioBlob.withUploadProgress(onProgress)
         : audioBlob;

@@ -95,7 +95,7 @@ function formatBytes(bytes: number) {
 
 export function UploadPage() {
   const { identity, isInitializing } = useInternetIdentity();
-  const { isFetching: isActorFetching } = useActor();
+  const { actor, isFetching: isActorFetching } = useActor();
   const navigate = useNavigate();
   const uploadMutation = useUploadTrack();
 
@@ -213,11 +213,16 @@ export function UploadPage() {
     );
   }
 
-  // Identity is set but the authenticated actor is still initializing
-  if (isActorFetching) {
+  // Identity is set but the authenticated actor is still initializing or hasn't loaded yet
+  if (isActorFetching || !actor) {
     return (
       <main className="container py-8 flex items-center justify-center min-h-[40vh]">
-        <Loader2 className="h-8 w-8 animate-spin text-gold" />
+        <div className="flex flex-col items-center gap-3 text-center">
+          <Loader2 className="h-8 w-8 animate-spin text-gold" />
+          <p className="text-sm text-muted-foreground font-ui">
+            Connecting to your account…
+          </p>
+        </div>
       </main>
     );
   }

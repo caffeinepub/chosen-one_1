@@ -1,6 +1,11 @@
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -15,6 +20,7 @@ import { Link, useParams } from "@tanstack/react-router";
 import {
   ArrowLeft,
   ChevronDown,
+  Eye,
   Heart,
   Loader2,
   MapPin,
@@ -23,20 +29,21 @@ import {
   Pause,
   Play,
   PlayCircle,
-  Swords,
   User,
   UserCheck,
   UserPlus,
   Users,
 } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { Track } from "../backend.d";
 import { CommentsSection } from "../components/CommentsSection";
 import { StarRating } from "../components/StarRating";
 import { type QueueTrack, usePlayer } from "../contexts/PlayerContext";
 import { useInternetIdentity } from "../hooks/useInternetIdentity";
+import { saveProfileViewNotification } from "../hooks/useProfileViewNotifications";
 import {
+  useCallerProfile,
   useCommentCount,
   useFollowArtist,
   useFollowerCount,
@@ -46,6 +53,49 @@ import {
   useUserProfile,
 } from "../hooks/useQueries";
 import { ChallengeArtistButton } from "./BattlesPage";
+
+/* ── Profile view types ──────────────────────────────── */
+interface ProfileView {
+  viewerId: string;
+  viewerName: string;
+  timestamp: number;
+}
+
+function getProfileViews(principalId: string): ProfileView[] {
+  try {
+    const raw = localStorage.getItem(`profile_views_${principalId}`);
+    if (!raw) return [];
+    return JSON.parse(raw) as ProfileView[];
+  } catch {
+    return [];
+  }
+}
+
+function saveProfileView(
+  principalId: string,
+  view: ProfileView,
+): ProfileView[] {
+  const existing = getProfileViews(principalId);
+  // Deduplicate by viewerId — remove old entry for this viewer if any
+  const filtered = existing.filter((v) => v.viewerId !== view.viewerId);
+  // Prepend new entry, cap at 50
+  const updated = [view, ...filtered].slice(0, 50);
+  localStorage.setItem(`profile_views_${principalId}`, JSON.stringify(updated));
+  return updated;
+}
+
+function timeAgoMs(timestamp: number): string {
+  const diff = Date.now() - timestamp;
+  const seconds = Math.floor(diff / 1000);
+  if (seconds < 60) return "just now";
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return `${minutes}m ago`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  if (days < 7) return `${days}d ago`;
+  return `${Math.floor(days / 7)}w ago`;
+}
 
 function trackToQueueTrack(track: Track): QueueTrack {
   return {
@@ -366,7 +416,45 @@ export function ArtistProfilePage() {
   const followMutation = useFollowArtist();
   const unfollowMutation = useUnfollowArtist();
 
+  // Caller profile for viewer name
+  const { data: callerProfile } = useCallerProfile();
+
   const isLoading = profileLoading || tracksLoading;
+
+  // View tracking state
+  const [viewCount, setViewCount] = useState(0);
+  const [recentViewers, setRecentViewers] = useState<ProfileView[]>([]);
+  const [viewersOpen, setViewersOpen] = useState(false);
+
+  // Record the view on page load (if not own profile and authenticated)
+  useEffect(() => {
+    if (!principalId) return;
+    // Always load existing views for display
+    const existing = getProfileViews(principalId);
+    setViewCount(existing.length);
+    setRecentViewers(existing.slice(0, 10));
+
+    if (isAuthenticated && !isOwnProfile && myPrincipalStr) {
+      const viewerName =
+        callerProfile?.username || `${myPrincipalStr.slice(0, 8)}…`;
+      const newView: ProfileView = {
+        viewerId: myPrincipalStr,
+        viewerName,
+        timestamp: Date.now(),
+      };
+      const updated = saveProfileView(principalId, newView);
+      setViewCount(updated.length);
+      setRecentViewers(updated.slice(0, 10));
+      // Also store a notification for the artist in their own localStorage
+      saveProfileViewNotification(principalId, myPrincipalStr, viewerName);
+    }
+  }, [
+    principalId,
+    isAuthenticated,
+    isOwnProfile,
+    myPrincipalStr,
+    callerProfile?.username,
+  ]);
 
   /* ── Not found ── */
   if (parseError || (!isLoading && profile === null)) {
@@ -527,6 +615,20 @@ export function ArtistProfilePage() {
               </span>
             </div>
 
+            {/* Profile views stat */}
+            <div
+              className="flex items-center gap-1.5"
+              data-ocid="artist.profile_views.panel"
+            >
+              <Eye className="h-3.5 w-3.5 text-purple-400/70" />
+              <span className="text-sm font-ui text-muted-foreground">
+                <span className="text-foreground font-semibold">
+                  {viewCount}
+                </span>{" "}
+                {viewCount === 1 ? "view" : "views"}
+              </span>
+            </div>
+
             {/* Follow / Unfollow button */}
             {!isOwnProfile && (
               <TooltipProvider>
@@ -601,6 +703,93 @@ export function ArtistProfilePage() {
             <p className="text-sm text-foreground/70 font-ui leading-relaxed mt-3 border-t border-border/30 pt-3">
               {bio}
             </p>
+          )}
+
+          {/* Who Viewed Your Profile (own profile only) */}
+          {isOwnProfile && (
+            <div className="mt-4 border-t border-border/30 pt-4">
+              <Collapsible open={viewersOpen} onOpenChange={setViewersOpen}>
+                <CollapsibleTrigger asChild>
+                  <button
+                    type="button"
+                    data-ocid="artist.profile_viewers.panel"
+                    className="w-full flex items-center justify-between rounded-xl border border-border/50 bg-background/20 px-4 py-3 hover:border-purple-400/30 transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-400/40"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="h-7 w-7 rounded-lg bg-purple-500/10 border border-purple-400/20 flex items-center justify-center shrink-0">
+                        <Eye className="h-3.5 w-3.5 text-purple-400" />
+                      </div>
+                      <div className="text-left">
+                        <p className="font-display font-bold text-sm text-foreground">
+                          Recent Profile Visits
+                        </p>
+                        <p className="text-xs text-muted-foreground font-ui">
+                          {viewCount} total view{viewCount !== 1 ? "s" : ""}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      {recentViewers.length > 0 && (
+                        <span className="text-xs font-ui font-semibold text-purple-400 bg-purple-400/10 border border-purple-400/20 rounded-full px-2 py-0.5">
+                          {recentViewers.length}
+                        </span>
+                      )}
+                      <ChevronDown
+                        className="h-4 w-4 text-muted-foreground transition-transform duration-200"
+                        style={{
+                          transform: viewersOpen
+                            ? "rotate(180deg)"
+                            : "rotate(0deg)",
+                        }}
+                      />
+                    </div>
+                  </button>
+                </CollapsibleTrigger>
+                <CollapsibleContent>
+                  <div className="mt-2 space-y-1.5">
+                    {recentViewers.length === 0 ? (
+                      <div
+                        className="rounded-xl border border-border bg-background/20 p-6 text-center"
+                        data-ocid="artist.profile_viewers.empty_state"
+                      >
+                        <Eye className="h-7 w-7 text-muted-foreground/30 mx-auto mb-2" />
+                        <p className="text-sm font-ui text-muted-foreground">
+                          No profile visits yet
+                        </p>
+                      </div>
+                    ) : (
+                      recentViewers.map((viewer, idx) => (
+                        <motion.div
+                          key={`${viewer.viewerId}-${viewer.timestamp}`}
+                          initial={{ opacity: 0, x: -6 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          transition={{ delay: idx * 0.04 }}
+                          data-ocid={`artist.profile_viewers.item.${idx + 1}`}
+                          className="flex items-center gap-3 rounded-lg border border-border/50 bg-background/20 px-3 py-2.5"
+                        >
+                          <Avatar className="h-8 w-8 shrink-0">
+                            <AvatarFallback className="bg-purple-500/10 text-purple-400 text-xs font-display font-bold border border-purple-400/20">
+                              {viewer.viewerName.slice(0, 1).toUpperCase()}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div className="flex-1 min-w-0">
+                            <p className="font-ui font-semibold text-xs text-foreground truncate">
+                              {viewer.viewerName}
+                            </p>
+                            <p className="text-[10px] text-muted-foreground font-ui font-mono">
+                              {`${viewer.viewerId.slice(0, 8)}…`}
+                            </p>
+                          </div>
+                          <span className="text-[10px] text-muted-foreground/60 font-ui shrink-0">
+                            {timeAgoMs(viewer.timestamp)}
+                          </span>
+                        </motion.div>
+                      ))
+                    )}
+                  </div>
+                </CollapsibleContent>
+              </Collapsible>
+            </div>
           )}
         </div>
       </motion.div>

@@ -499,6 +499,9 @@ export function ProfilePage() {
   const followingCount = followedArtists?.length ?? 0;
   const followerNum = followerCount ? Number(followerCount) : 0;
 
+  // Member count via localStorage
+  const [memberCount, setMemberCount] = useState(0);
+
   const [username, setUsername] = useState("");
   const [bio, setBio] = useState("");
   const [picFile, setPicFile] = useState<File | null>(null);
@@ -509,6 +512,25 @@ export function ProfilePage() {
   const [saveStatus, setSaveStatus] = useState<"idle" | "success" | "error">(
     "idle",
   );
+
+  // Register current user in the members list on first visit after login
+  useEffect(() => {
+    if (!identity) return;
+    const principalStr = identity.getPrincipal().toString();
+    // Skip anonymous principals
+    if (principalStr === "2vxsx-fae") return;
+    try {
+      const raw = localStorage.getItem("chosen_one_members");
+      const members: string[] = raw ? (JSON.parse(raw) as string[]) : [];
+      if (!members.includes(principalStr)) {
+        members.push(principalStr);
+        localStorage.setItem("chosen_one_members", JSON.stringify(members));
+      }
+      setMemberCount(members.length);
+    } catch {
+      setMemberCount(1);
+    }
+  }, [identity]);
 
   // Prefill from loaded profile
   useEffect(() => {
@@ -867,7 +889,7 @@ export function ProfilePage() {
 
         {/* ── Stats Bar ─────────────────────────────────── */}
         <div
-          className="grid grid-cols-2 gap-3"
+          className="grid grid-cols-3 gap-3"
           data-ocid="profile.followers.panel"
         >
           <div className="rounded-xl border border-border bg-card px-4 py-3 flex flex-col items-center gap-1">
@@ -884,6 +906,20 @@ export function ProfilePage() {
             </span>
             <span className="text-xs text-muted-foreground font-ui font-semibold uppercase tracking-wider">
               Following
+            </span>
+          </div>
+          <div
+            className="rounded-xl border border-border bg-card px-4 py-3 flex flex-col items-center gap-1"
+            data-ocid="profile.members.card"
+          >
+            <div className="flex items-center gap-1.5">
+              <Users className="h-5 w-5 text-blue-400/70" />
+              <span className="text-2xl font-display font-black text-blue-400">
+                {memberCount.toLocaleString()}
+              </span>
+            </div>
+            <span className="text-xs text-muted-foreground font-ui font-semibold uppercase tracking-wider text-center">
+              Members Joined
             </span>
           </div>
         </div>
