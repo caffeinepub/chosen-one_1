@@ -18,6 +18,8 @@ import {
   Bell,
   CornerDownRight,
   Eye,
+  Info,
+  Library,
   ListMusic,
   LogIn,
   LogOut,
@@ -184,6 +186,12 @@ const navLinks = [
     ocid: "nav.battles.link",
   },
   {
+    to: "/playlists",
+    label: "Playlists",
+    icon: Library,
+    ocid: "nav.playlists.link",
+  },
+  {
     to: "/leaderboard",
     label: "Leaderboard",
     icon: Trophy,
@@ -197,6 +205,7 @@ const navLinks = [
     ocid: "nav.my_tracks.link",
   },
   { to: "/profile", label: "Profile", icon: User, ocid: "nav.profile.link" },
+  { to: "/about", label: "About", icon: Info, ocid: "nav.about.link" },
 ];
 
 export function Navbar() {

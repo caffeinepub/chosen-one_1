@@ -197,28 +197,37 @@ actor {
     };
   };
 
-  // Store user profiles, tracks, and comments in persistent Maps
+  // Playlist type
+  type Playlist = {
+    id : Text;
+    ownerId : Principal;
+    name : Text;
+    trackIds : [Text];
+    createdAt : Int;
+    isPublic : Bool;
+  };
+
+  module Playlist {
+    public func compareByCreatedAt(a : Playlist, b : Playlist) : Order.Order {
+      Int.compare(a.createdAt, b.createdAt);
+    };
+  };
+
+  // Store user profiles, tracks, comments, and playlists in persistent Maps
   let userProfiles = Map.empty<Principal, UserProfile>();
   let tracks = Map.empty<Text, Track>();
   let comments = Map.empty<Text, Comment>();
   let musicRequests = Map.empty<Text, MusicRequest>();
+  let playlists = Map.empty<Text, Playlist>();
 
   // Store comment replies
   let commentReplies = Map.empty<Text, [CommentReply]>();
-
-  // Store request replies
   let requestReplies = Map.empty<Text, RequestReply>();
 
-  // Store follows in persistent map
+  // Store follows, notifications, and battles in persistent maps
   let follows = Map.empty<Principal, [Principal]>();
-
-  // Store notifications in persistent map
   let notifications = Map.empty<Principal, [Notification]>();
-
-  // Store battles in persistent map
   let battles = Map.empty<Text, Battle>();
-
-  // Store email subscribers in persistent map
   let emailSubscribers = Map.empty<Text, Int>();
 
   // Profile management
@@ -1242,5 +1251,112 @@ actor {
         };
       }
     );
+  };
+
+  // ******** Playlists ********
+
+  public shared ({ caller }) func createPlaylist(name : Text, trackIds : [Text], isPublic : Bool) : async Text {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can create playlists");
+    };
+
+    if (name.trim(#predicate(Char.isWhitespace)).size() == 0) {
+      Runtime.trap("Playlist name cannot be empty");
+    };
+
+    let timestamp = Time.now();
+    let playlistId = caller.toText() # "." # timestamp.toText();
+
+    let newPlaylist : Playlist = {
+      id = playlistId;
+      ownerId = caller;
+      name;
+      trackIds;
+      createdAt = timestamp;
+      isPublic;
+    };
+
+    playlists.add(playlistId, newPlaylist);
+    playlistId;
+  };
+
+  public shared ({ caller }) func updatePlaylist(id : Text, name : Text, trackIds : [Text], isPublic : Bool) : async () {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can update playlists");
+    };
+
+    let existingPlaylist = switch (playlists.get(id)) {
+      case (null) { Runtime.trap("Playlist not found") };
+      case (?playlist) {
+        if (playlist.ownerId != caller) {
+          Runtime.trap("Cannot update a playlist that does not belong to you");
+        };
+        playlist;
+      };
+    };
+
+    let updatedPlaylist : Playlist = {
+      existingPlaylist with
+      name;
+      trackIds;
+      isPublic;
+    };
+
+    playlists.add(id, updatedPlaylist);
+  };
+
+  public shared ({ caller }) func deletePlaylist(id : Text) : async () {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can delete playlists");
+    };
+
+    switch (playlists.get(id)) {
+      case (null) { Runtime.trap("Playlist not found") };
+      case (?playlist) {
+        if (playlist.ownerId != caller) {
+          Runtime.trap("Cannot delete a playlist that does not belong to you");
+        };
+        playlists.remove(id);
+      };
+    };
+  };
+
+  public query ({ caller }) func getMyPlaylists() : async [Playlist] {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can get their playlists");
+    };
+
+    let myPlaylists = playlists.values().toArray().filter(
+      func(playlist) { playlist.ownerId == caller }
+    );
+
+    myPlaylists.sort(Playlist.compareByCreatedAt);
+  };
+
+  public query ({ caller }) func getPlaylistById(id : Text) : async ?Playlist {
+    let playlist = switch (playlists.get(id)) {
+      case (null) { return null };
+      case (?p) { p };
+    };
+
+    // If playlist is private, only owner can access
+    if (not playlist.isPublic) {
+      if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+        Runtime.trap("Unauthorized");
+      };
+      if (playlist.ownerId != caller) {
+        Runtime.trap("Unauthorized");
+      };
+    };
+
+    ?playlist;
+  };
+
+  public query func getPublicPlaylistsByOwner(owner : Principal) : async [Playlist] {
+    let publicPlaylists = playlists.values().toArray().filter(
+      func(playlist) { playlist.ownerId == owner and playlist.isPublic }
+    );
+
+    publicPlaylists.sort(Playlist.compareByCreatedAt);
   };
 };

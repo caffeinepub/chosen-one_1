@@ -45,6 +45,14 @@ export interface Comment {
     trackId: string;
     timestamp: bigint;
 }
+export interface Playlist {
+    id: string;
+    ownerId: Principal;
+    name: string;
+    createdAt: bigint;
+    trackIds: Array<string>;
+    isPublic: boolean;
+}
 export interface MusicRequest {
     id: string;
     fromUserId: Principal;
@@ -126,7 +134,9 @@ export interface backendInterface {
     assignCallerUserRole(user: Principal, role: UserRole): Promise<void>;
     createBattle(defenderArtistId: Principal, challengerTrackId: string): Promise<string>;
     createOrUpdateProfile(username: string, profilePicKey: ExternalBlob | null, bannerKey: ExternalBlob | null, bgStyle: string): Promise<void>;
+    createPlaylist(name: string, trackIds: Array<string>, isPublic: boolean): Promise<string>;
     deleteComment(commentId: string): Promise<void>;
+    deletePlaylist(id: string): Promise<void>;
     deleteTrack(id: string): Promise<void>;
     finalizeBattle(battleId: string): Promise<void>;
     followArtist(artistId: Principal): Promise<void>;
@@ -144,9 +154,12 @@ export interface backendInterface {
     getMyBattles(): Promise<Array<Battle>>;
     getMyMusicRequests(): Promise<Array<MusicRequest>>;
     getMyNotifications(): Promise<Array<Notification>>;
+    getMyPlaylists(): Promise<Array<Playlist>>;
     getMyRequestReplies(): Promise<Array<[MusicRequest, RequestReply | null]>>;
     getOwnTracks(): Promise<Array<Track>>;
     getPendingBattlesForMe(): Promise<Array<Battle>>;
+    getPlaylistById(id: string): Promise<Playlist | null>;
+    getPublicPlaylistsByOwner(owner: Principal): Promise<Array<Playlist>>;
     getRepliesForComment(commentId: string): Promise<Array<CommentReply>>;
     getReplyForRequest(requestId: string): Promise<RequestReply | null>;
     getTopThreeTracks(): Promise<Array<AverageRating>>;
@@ -170,6 +183,7 @@ export interface backendInterface {
     subscribeToEmailList(email: string): Promise<void>;
     unfollowArtist(artistId: Principal): Promise<void>;
     unlikeTrack(trackId: string): Promise<void>;
+    updatePlaylist(id: string, name: string, trackIds: Array<string>, isPublic: boolean): Promise<void>;
     uploadTrack(id: string, title: string, artist: string, description: string, genre: string, audioFileKey: ExternalBlob, coverKey: ExternalBlob | null, city: string, state: string, region: string): Promise<void>;
     voteInBattle(battleId: string, side: BattleSide): Promise<void>;
 }

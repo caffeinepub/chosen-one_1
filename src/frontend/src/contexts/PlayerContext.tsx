@@ -39,6 +39,7 @@ interface PlayerContextValue {
   toggleShuffle: () => void;
   removeFromQueue: (idx: number) => void;
   jumpTo: (idx: number) => void;
+  reorderQueue: (fromIdx: number, toIdx: number) => void;
 }
 
 const PlayerContext = createContext<PlayerContextValue | null>(null);
@@ -356,6 +357,33 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
     [loadAndPlay],
   );
 
+  const reorderQueue = useCallback((fromIdx: number, toIdx: number) => {
+    setQueue((prev) => {
+      if (
+        fromIdx < 0 ||
+        fromIdx >= prev.length ||
+        toIdx < 0 ||
+        toIdx >= prev.length ||
+        fromIdx === toIdx
+      )
+        return prev;
+      const newQueue = [...prev];
+      const [moved] = newQueue.splice(fromIdx, 1);
+      if (!moved) return prev;
+      newQueue.splice(toIdx, 0, moved);
+      // Adjust currentIndex so the playing track stays current
+      const curIdx = currentIndexRef.current;
+      if (curIdx === fromIdx) {
+        setCurrentIndex(toIdx);
+      } else if (fromIdx < curIdx && toIdx >= curIdx) {
+        setCurrentIndex(curIdx - 1);
+      } else if (fromIdx > curIdx && toIdx <= curIdx) {
+        setCurrentIndex(curIdx + 1);
+      }
+      return newQueue;
+    });
+  }, []);
+
   return (
     <PlayerContext.Provider
       value={{
@@ -379,6 +407,7 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
         toggleShuffle,
         removeFromQueue,
         jumpTo,
+        reorderQueue,
       }}
     >
       {children}

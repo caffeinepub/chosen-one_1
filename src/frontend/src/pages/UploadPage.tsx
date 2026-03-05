@@ -95,7 +95,7 @@ function formatBytes(bytes: number) {
 
 export function UploadPage() {
   const { identity, isInitializing } = useInternetIdentity();
-  const { actor, isFetching: isActorFetching } = useActor();
+  const { actor } = useActor();
   // After 20 seconds of waiting for the actor, show a refresh prompt
   // so the user isn't stuck with an infinite spinner.
   const [actorTimedOut, setActorTimedOut] = useState(false);
@@ -103,13 +103,15 @@ export function UploadPage() {
   const uploadMutation = useUploadTrack();
 
   useEffect(() => {
-    if (actor && !isActorFetching) {
+    // Only start the timeout when we genuinely don't have an actor yet.
+    // If actor is present (even while a background refetch is running), we're fine.
+    if (actor) {
       setActorTimedOut(false);
       return;
     }
-    const t = setTimeout(() => setActorTimedOut(true), 20000);
+    const t = setTimeout(() => setActorTimedOut(true), 30000);
     return () => clearTimeout(t);
-  }, [actor, isActorFetching]);
+  }, [actor]);
 
   const [title, setTitle] = useState("");
   const [artist, setArtist] = useState("");
@@ -229,10 +231,9 @@ export function UploadPage() {
   }
 
   // Wait for the authenticated actor to be ready.
-  // The actor starts as an anonymous actor and is replaced once login is confirmed --
-  // we must wait for isFetching=false AND actor present AND identity is authenticated.
-  const isActorAuthenticated =
-    !!actor && !isActorFetching && isIdentityAuthenticated;
+  // Once the actor exists, we treat it as ready even if a background refetch is running.
+  // Only block the form when there is NO actor at all yet (initial load after login).
+  const isActorAuthenticated = !!actor && isIdentityAuthenticated;
 
   if (!isActorAuthenticated) {
     if (actorTimedOut) {

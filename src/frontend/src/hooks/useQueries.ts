@@ -11,6 +11,7 @@ import type {
   CommentReply,
   MusicRequest,
   Notification,
+  Playlist,
   RequestReply,
   Track,
   UserProfile,
@@ -915,6 +916,118 @@ export function useEmailSubscribers() {
     },
     enabled: !!actor && !isFetching,
     staleTime: 30_000,
+  });
+}
+
+/* ── Playlists ───────────────────────────────────────── */
+export function useMyPlaylists() {
+  const { actor, isFetching } = useActor();
+  return useQuery<Playlist[]>({
+    queryKey: ["my-playlists"],
+    queryFn: async () => {
+      if (!actor) return [];
+      return actor.getMyPlaylists();
+    },
+    enabled: !!actor && !isFetching,
+  });
+}
+
+export function usePlaylistById(id: string | null) {
+  const { actor, isFetching } = useActor();
+  return useQuery<Playlist | null>({
+    queryKey: ["playlist", id],
+    queryFn: async () => {
+      if (!actor || !id) return null;
+      return actor.getPlaylistById(id);
+    },
+    enabled: !!actor && !isFetching && !!id,
+  });
+}
+
+export function usePublicPlaylistsByOwner(owner: Principal | undefined) {
+  const { actor, isFetching } = useActor();
+  const principalStr = owner?.toString();
+  return useQuery<Playlist[]>({
+    queryKey: ["public-playlists", principalStr],
+    queryFn: async () => {
+      if (!actor || !owner) return [];
+      return actor.getPublicPlaylistsByOwner(owner);
+    },
+    enabled: !!actor && !isFetching && !!owner,
+  });
+}
+
+export function useTrackById(id: string | null) {
+  const { actor, isFetching } = useActor();
+  return useQuery<Track | null>({
+    queryKey: ["track", id],
+    queryFn: async () => {
+      if (!actor || !id) return null;
+      return actor.getTrackById(id);
+    },
+    enabled: !!actor && !isFetching && !!id,
+    staleTime: 5 * 60 * 1000,
+  });
+}
+
+export function useCreatePlaylist() {
+  const { actor } = useActor();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      name,
+      trackIds,
+      isPublic,
+    }: {
+      name: string;
+      trackIds: string[];
+      isPublic: boolean;
+    }) => {
+      if (!actor) throw new Error("Not authenticated");
+      return actor.createPlaylist(name, trackIds, isPublic);
+    },
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ["my-playlists"] });
+    },
+  });
+}
+
+export function useUpdatePlaylist() {
+  const { actor } = useActor();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      id,
+      name,
+      trackIds,
+      isPublic,
+    }: {
+      id: string;
+      name: string;
+      trackIds: string[];
+      isPublic: boolean;
+    }) => {
+      if (!actor) throw new Error("Not authenticated");
+      await actor.updatePlaylist(id, name, trackIds, isPublic);
+    },
+    onSuccess: (_data, { id }) => {
+      void qc.invalidateQueries({ queryKey: ["my-playlists"] });
+      void qc.invalidateQueries({ queryKey: ["playlist", id] });
+    },
+  });
+}
+
+export function useDeletePlaylist() {
+  const { actor } = useActor();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      if (!actor) throw new Error("Not authenticated");
+      await actor.deletePlaylist(id);
+    },
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ["my-playlists"] });
+    },
   });
 }
 

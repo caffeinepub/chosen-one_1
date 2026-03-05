@@ -1,35 +1,27 @@
 # Chosen One
 
 ## Current State
-The app has an admin role system. Admin access is claimed by calling `_initializeAccessControlWithSecret` with the correct `CAFFEINE_ADMIN_TOKEN`. The token is currently passed via a URL hash param (`caffeineAdminToken`). The user does not have this token, so they cannot claim admin through the URL.
-
-An Admin Subscribers page exists at `/admin/subscribers` but only shows if `isCallerAdmin` is true. There is no way for the user to enter a token manually or claim admin from the UI.
+The app is a full-featured AI music chart platform with Charts, Following, Battles, Playlists, Leaderboard, Upload, My Tracks, and Profile pages. Navigation is via a hamburger sidebar. There is no About page.
 
 ## Requested Changes (Diff)
 
 ### Add
-- New page `/admin/setup` — Admin Setup page with:
-  - A token input field (password type, masked) for the user to paste their `CAFFEINE_ADMIN_TOKEN`
-  - A "Claim Admin" button that calls `_initializeAccessControlWithSecret` with the entered token
-  - Feedback states: loading, success (you are now admin), already-admin (you are already admin), error (wrong token)
-  - A "Check my current role" display showing the caller's current role
-  - Login gate if not authenticated
-- Route `/admin/setup` added to router
-- Link to `/admin/setup` added in the nav's Admin section (visible to everyone when logged in, not just admins — so the user can find it before they have admin)
+- New `/about` route and `AboutPage.tsx` component
+- "About" nav link added to the hamburger sidebar nav links list
+- AboutPage sections:
+  1. Hero section -- what the platform is and why users should join (bold CTA to sign up)
+  2. "Why Join?" section -- reasons to join with icon cards
+  3. "How to Use the Platform" step-by-step guide with numbered sections covering: signing in, uploading tracks, viewing/rating charts, viewing artist profiles, following artists, battling other artists, managing playlists, and using the notifications bell
+  4. "Add to Home Screen" section -- instructions for iOS (Safari share > Add to Home Screen) and Android (Chrome menu > Add to Home Screen)
+  5. "Contact Us" section -- email Chosenoneproductions901@gmail.com with a mailto link
 
 ### Modify
-- Navbar: add an "Admin Setup" link visible to all authenticated users (not just admins), pointing to `/admin/setup`. This can sit next to or replace the existing admin link until admin is claimed; after claiming admin, user sees both the Setup page and the Subscribers page.
+- `Navbar.tsx` -- add "About" entry to the `navLinks` array so it appears in the hamburger drawer
 
 ### Remove
 - Nothing removed
 
 ## Implementation Plan
-1. Create `src/frontend/src/pages/AdminSetupPage.tsx` with:
-   - `useIsCallerAdmin` to check current role
-   - `useActor` to get the actor
-   - Token input + Claim button calling `actor._initializeAccessControlWithSecret(token)` directly
-   - Success/error/already-admin states with clear messaging
-   - Instructions explaining what the token is and where to find it (Caffeine dashboard)
-2. Add route `/admin/setup` in `App.tsx`
-3. Update `Navbar.tsx` to show an "Admin Setup" link for all authenticated users (separate from the admin-only link)
-4. Add a `useClaimAdmin` mutation to `useQueries.ts` (or inline in the page) that calls `_initializeAccessControlWithSecret`
+1. Create `src/frontend/src/pages/AboutPage.tsx` with all five sections
+2. Add the `/about` route to `App.tsx` and register it in the router
+3. Add About link to navLinks array in `Navbar.tsx` with an Info icon

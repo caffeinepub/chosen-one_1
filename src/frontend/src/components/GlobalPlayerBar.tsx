@@ -27,6 +27,7 @@ import {
   Play,
   Repeat,
   Repeat1,
+  Save,
   Share2,
   Shuffle,
   SkipBack,
@@ -39,7 +40,9 @@ import { useEffect, useRef, useState } from "react";
 import { FaFacebook, FaTelegram, FaTwitter, FaWhatsapp } from "react-icons/fa";
 import { toast } from "sonner";
 import { type RepeatMode, usePlayer } from "../contexts/PlayerContext";
+import { useInternetIdentity } from "../hooks/useInternetIdentity";
 import { useLiveListeners } from "../hooks/useLiveListeners";
+import { SaveQueueAsPlaylistDialog } from "../pages/PlaylistsPage";
 
 function formatTime(secs: number) {
   if (!Number.isFinite(secs) || secs < 0) return "0:00";
@@ -78,8 +81,12 @@ export function GlobalPlayerBar() {
     jumpTo,
   } = usePlayer();
 
+  const { identity } = useInternetIdentity();
+  const isAuthenticated = !!identity;
+
   const [queueOpen, setQueueOpen] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
+  const [savePlaylistOpen, setSavePlaylistOpen] = useState(false);
   const [isFullSize, setIsFullSize] = useState(false);
   const [isNativeFullscreen, setIsNativeFullscreen] = useState(false);
   const fullsizeRef = useRef<HTMLDivElement>(null);
@@ -688,6 +695,21 @@ export function GlobalPlayerBar() {
                       ({queue.length} {queue.length === 1 ? "track" : "tracks"})
                     </span>
                   </SheetTitle>
+                  {isAuthenticated && queue.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => setSavePlaylistOpen(true)}
+                      data-ocid="player.queue.save_playlist.open_modal_button"
+                      className={cn(
+                        "mt-2 flex items-center gap-2 w-full px-3 py-2 rounded-lg font-ui text-xs transition-all duration-200",
+                        "text-muted-foreground hover:text-gold hover:bg-gold/10 border border-dashed border-border hover:border-gold/30",
+                        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold/50",
+                      )}
+                    >
+                      <Save className="h-3.5 w-3.5" />
+                      Save as Playlist
+                    </button>
+                  )}
                 </SheetHeader>
 
                 <ScrollArea className="flex-1">
@@ -942,6 +964,13 @@ export function GlobalPlayerBar() {
           </div>
         </div>
       </motion.div>
+
+      {/* Save queue as playlist dialog */}
+      <SaveQueueAsPlaylistDialog
+        open={savePlaylistOpen}
+        onClose={() => setSavePlaylistOpen(false)}
+        queueTrackIds={queue.map((t) => t.id)}
+      />
     </>
   );
 }

@@ -10,12 +10,14 @@ import { Footer } from "./components/Footer";
 import { GlobalPlayerBar } from "./components/GlobalPlayerBar";
 import { Navbar } from "./components/Navbar";
 import { PlayerProvider, usePlayer } from "./contexts/PlayerContext";
+import { AboutPage } from "./pages/AboutPage";
 import { ArtistProfilePage } from "./pages/ArtistProfilePage";
 import { BattlesPage } from "./pages/BattlesPage";
 import { ChartsPage } from "./pages/ChartsPage";
 import { FollowingPage } from "./pages/FollowingPage";
 import { LeaderboardPage } from "./pages/LeaderboardPage";
 import { MyTracksPage } from "./pages/MyTracksPage";
+import { PlaylistsPage } from "./pages/PlaylistsPage";
 import { ProfilePage } from "./pages/ProfilePage";
 import { UploadPage } from "./pages/UploadPage";
 
@@ -111,16 +113,30 @@ const battlesRoute = createRoute({
   component: BattlesPage,
 });
 
+const playlistsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/playlists",
+  component: PlaylistsPage,
+});
+
+const aboutRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/about",
+  component: AboutPage,
+});
+
 /* ── Router ──────────────────────────────────────────── */
 const routeTree = rootRoute.addChildren([
   chartsRoute,
   leaderboardRoute,
   followingRoute,
   battlesRoute,
+  playlistsRoute,
   uploadRoute,
   myTracksRoute,
   profileRoute,
   artistProfileRoute,
+  aboutRoute,
 ]);
 
 const router = createRouter({ routeTree });

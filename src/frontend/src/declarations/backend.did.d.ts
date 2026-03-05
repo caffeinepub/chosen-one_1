@@ -65,6 +65,14 @@ export interface Notification {
   'replyText' : [] | [string],
   'fromArtistId' : Principal,
 }
+export interface Playlist {
+  'id' : string,
+  'ownerId' : Principal,
+  'name' : string,
+  'createdAt' : bigint,
+  'trackIds' : Array<string>,
+  'isPublic' : boolean,
+}
 export interface Rating { 'raterUserId' : Principal, 'score' : bigint }
 export interface RequestReply {
   'requestId' : string,
@@ -132,7 +140,9 @@ export interface _SERVICE {
     [string, [] | [ExternalBlob], [] | [ExternalBlob], string],
     undefined
   >,
+  'createPlaylist' : ActorMethod<[string, Array<string>, boolean], string>,
   'deleteComment' : ActorMethod<[string], undefined>,
+  'deletePlaylist' : ActorMethod<[string], undefined>,
   'deleteTrack' : ActorMethod<[string], undefined>,
   'finalizeBattle' : ActorMethod<[string], undefined>,
   'followArtist' : ActorMethod<[Principal], undefined>,
@@ -150,12 +160,15 @@ export interface _SERVICE {
   'getMyBattles' : ActorMethod<[], Array<Battle>>,
   'getMyMusicRequests' : ActorMethod<[], Array<MusicRequest>>,
   'getMyNotifications' : ActorMethod<[], Array<Notification>>,
+  'getMyPlaylists' : ActorMethod<[], Array<Playlist>>,
   'getMyRequestReplies' : ActorMethod<
     [],
     Array<[MusicRequest, [] | [RequestReply]]>
   >,
   'getOwnTracks' : ActorMethod<[], Array<Track>>,
   'getPendingBattlesForMe' : ActorMethod<[], Array<Battle>>,
+  'getPlaylistById' : ActorMethod<[string], [] | [Playlist]>,
+  'getPublicPlaylistsByOwner' : ActorMethod<[Principal], Array<Playlist>>,
   'getRepliesForComment' : ActorMethod<[string], Array<CommentReply>>,
   'getReplyForRequest' : ActorMethod<[string], [] | [RequestReply]>,
   'getTopThreeTracks' : ActorMethod<[], Array<AverageRating>>,
@@ -185,6 +198,10 @@ export interface _SERVICE {
   'subscribeToEmailList' : ActorMethod<[string], undefined>,
   'unfollowArtist' : ActorMethod<[Principal], undefined>,
   'unlikeTrack' : ActorMethod<[string], undefined>,
+  'updatePlaylist' : ActorMethod<
+    [string, string, Array<string>, boolean],
+    undefined
+  >,
   'uploadTrack' : ActorMethod<
     [
       string,

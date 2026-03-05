@@ -22,8 +22,6 @@ import { cn } from "@/lib/utils";
 import { Link } from "@tanstack/react-router";
 import {
   Award,
-  CheckCircle2,
-  ChevronDown,
   Crown,
   Flame,
   Globe,
@@ -35,7 +33,6 @@ import {
   Pause,
   Play,
   PlayCircle,
-  Rocket,
   Search,
   Send,
   Star,
@@ -44,6 +41,7 @@ import {
   X,
 } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
+import type React from "react";
 import { useState } from "react";
 import { toast } from "sonner";
 import type { AverageRating } from "../backend.d";
@@ -259,189 +257,109 @@ function DistributionModal({
   open,
   onClose,
   trackTitle,
-  artistName,
   rank,
 }: {
   open: boolean;
   onClose: () => void;
   trackTitle: string;
-  artistName: string;
+  artistName?: string;
   rank: number;
 }) {
-  const [step, setStep] = useState<"confirm" | "success">("confirm");
-
-  const handleClose = () => {
-    setStep("confirm");
-    onClose();
+  const encouragements: Record<
+    number,
+    { headline: string; body: string; icon: React.ReactNode }
+  > = {
+    1: {
+      headline: "You're #1 — Keep Dominating!",
+      body: "The crown looks great on you. Your AI music is making waves and the community is voting loud. Stay consistent, keep creating, and your legacy is just getting started.",
+      icon: (
+        <Crown className="h-12 w-12" style={{ color: "oklch(0.85 0.18 72)" }} />
+      ),
+    },
+    2: {
+      headline: "You're Rising Fast!",
+      body: "Silver is nothing to sleep on. You're right behind the top spot and the gap is closing. Keep pushing — #1 is within reach.",
+      icon: <Star className="h-12 w-12 text-slate-300" />,
+    },
+    3: {
+      headline: "On Fire and Climbing!",
+      body: "Top 3 out of everyone — that's a serious achievement. The votes are coming in and your sound is resonating. Don't stop now.",
+      icon: <Flame className="h-12 w-12 text-orange-400" />,
+    },
   };
 
-  const handleConfirm = () => {
-    setStep("success");
-    toast.success(`Distribution request submitted for ${trackTitle}!`);
-  };
+  const msg = encouragements[rank] ?? encouragements[3];
 
   return (
-    <Dialog open={open} onOpenChange={handleClose}>
+    <Dialog open={open} onOpenChange={onClose}>
       <DialogContent
-        className="bg-card border-border max-w-md"
+        className="bg-card border-border max-w-sm text-center"
         data-ocid="distribution.dialog"
       >
-        <DialogHeader>
-          <DialogTitle className="font-display font-bold flex items-center gap-2">
-            {rank === 1 && <Crown className="h-5 w-5 text-gold" />}
-            {rank === 2 && <Star className="h-5 w-5 text-slate-300" />}
-            {rank === 3 && <Flame className="h-5 w-5 text-orange-400" />}
-            Music Distribution
-          </DialogTitle>
-        </DialogHeader>
+        <motion.div
+          initial={{ opacity: 0, scale: 0.92 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.25, type: "spring" }}
+          className="flex flex-col items-center gap-4 py-4"
+        >
+          <motion.div
+            initial={{ scale: 0, rotate: -15 }}
+            animate={{ scale: 1, rotate: 0 }}
+            transition={{
+              type: "spring",
+              stiffness: 260,
+              damping: 18,
+              delay: 0.05,
+            }}
+          >
+            {msg.icon}
+          </motion.div>
 
-        <AnimatePresence mode="wait">
-          {step === "confirm" ? (
-            <motion.div
-              key="confirm"
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -8 }}
-              transition={{ duration: 0.2 }}
-              className="space-y-4 py-2"
-            >
-              {/* Track info */}
-              <div
-                className="rounded-lg border p-4 space-y-2"
-                style={{
-                  background:
-                    rank === 1
-                      ? "linear-gradient(135deg, oklch(0.78 0.17 72 / 0.08), oklch(0.70 0.20 60 / 0.04))"
-                      : rank === 2
-                        ? "linear-gradient(135deg, oklch(0.75 0.02 260 / 0.08), transparent)"
-                        : "linear-gradient(135deg, oklch(0.68 0.13 50 / 0.08), transparent)",
-                  borderColor:
-                    rank === 1
-                      ? "oklch(0.78 0.17 72 / 0.3)"
-                      : rank === 2
-                        ? "oklch(0.75 0.03 260 / 0.3)"
-                        : "oklch(0.68 0.13 50 / 0.3)",
-                }}
-              >
-                <div className="flex items-center gap-2">
-                  <RewardBadge rank={rank} />
-                </div>
-                <p className="font-display font-bold text-foreground">
-                  {trackTitle}
-                </p>
-                <p className="text-sm text-muted-foreground font-ui">
-                  by {artistName}
-                </p>
-                <p className="text-xs text-muted-foreground/70 font-ui">
-                  Current rank: #{rank}
-                </p>
-              </div>
+          <div className="space-y-2">
+            <h3 className="font-display font-bold text-xl text-foreground">
+              {msg.headline}
+            </h3>
+            <p className="text-sm text-muted-foreground font-ui leading-relaxed">
+              {msg.body}
+            </p>
+          </div>
 
-              <p className="text-sm text-muted-foreground font-ui leading-relaxed">
-                Submit{" "}
-                <span className="text-foreground font-semibold">
-                  {trackTitle}
-                </span>{" "}
-                to music distribution? This will help get your AI music on
-                streaming platforms like Spotify, Apple Music, and more.
-              </p>
+          <div
+            className="flex items-center gap-2 rounded-full px-4 py-2 text-sm font-ui font-semibold"
+            style={{
+              background:
+                rank === 1
+                  ? "oklch(0.78 0.17 72 / 0.12)"
+                  : rank === 2
+                    ? "oklch(0.75 0.02 260 / 0.12)"
+                    : "oklch(0.68 0.13 50 / 0.12)",
+              border:
+                rank === 1
+                  ? "1px solid oklch(0.78 0.17 72 / 0.3)"
+                  : rank === 2
+                    ? "1px solid oklch(0.75 0.03 260 / 0.3)"
+                    : "1px solid oklch(0.68 0.13 50 / 0.3)",
+              color:
+                rank === 1
+                  ? "oklch(0.85 0.18 72)"
+                  : rank === 2
+                    ? "oklch(0.85 0.03 260)"
+                    : "oklch(0.78 0.14 50)",
+            }}
+          >
+            <Award className="h-4 w-4" />
+            {trackTitle} — #{rank} on the charts
+          </div>
 
-              <div className="flex items-start gap-2 rounded-lg bg-secondary/50 border border-border p-3">
-                <Award className="h-4 w-4 text-gold shrink-0 mt-0.5" />
-                <p className="text-xs text-muted-foreground font-ui">
-                  Top-ranked tracks get priority placement in distribution
-                  review. Your #{rank} position gives you an advantage!
-                </p>
-              </div>
-            </motion.div>
-          ) : (
-            <motion.div
-              key="success"
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.25, type: "spring" }}
-              className="flex flex-col items-center gap-4 py-6 text-center"
-            >
-              <motion.div
-                initial={{ scale: 0, rotate: -20 }}
-                animate={{ scale: 1, rotate: 0 }}
-                transition={{ type: "spring", stiffness: 250, damping: 18 }}
-              >
-                <CheckCircle2 className="h-16 w-16 text-green-400" />
-              </motion.div>
-              <div className="space-y-1">
-                <h3 className="font-display font-bold text-xl text-foreground">
-                  Submitted!
-                </h3>
-                <p className="text-sm text-muted-foreground font-ui">
-                  Your track is queued for distribution review.
-                </p>
-              </div>
-              <div className="flex items-center gap-2 rounded-full bg-gold/10 border border-gold/25 px-4 py-2">
-                <Rocket className="h-4 w-4 text-gold" />
-                <span className="text-sm font-ui font-semibold text-gold">
-                  {trackTitle} — on its way!
-                </span>
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-
-        <DialogFooter className="gap-2">
-          {step === "confirm" ? (
-            <>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={handleClose}
-                className="font-ui border-border"
-                data-ocid="distribution.cancel_button"
-              >
-                Cancel
-              </Button>
-              <Button
-                type="button"
-                onClick={handleConfirm}
-                className="font-ui font-bold gap-2"
-                style={{
-                  background:
-                    rank === 1
-                      ? "linear-gradient(135deg, oklch(0.78 0.17 72 / 0.3), oklch(0.70 0.20 60 / 0.2))"
-                      : rank === 2
-                        ? "oklch(0.75 0.02 260 / 0.2)"
-                        : "oklch(0.68 0.13 50 / 0.2)",
-                  color:
-                    rank === 1
-                      ? "oklch(0.85 0.18 72)"
-                      : rank === 2
-                        ? "oklch(0.85 0.03 260)"
-                        : "oklch(0.78 0.14 50)",
-                  borderColor:
-                    rank === 1
-                      ? "oklch(0.78 0.17 72 / 0.4)"
-                      : rank === 2
-                        ? "oklch(0.75 0.03 260 / 0.4)"
-                        : "oklch(0.68 0.13 50 / 0.4)",
-                  border: "1px solid",
-                }}
-                data-ocid="distribution.confirm_button"
-              >
-                <Rocket className="h-4 w-4" />
-                Confirm
-              </Button>
-            </>
-          ) : (
-            <Button
-              type="button"
-              onClick={handleClose}
-              className="font-ui bg-secondary text-foreground hover:bg-secondary/80 border border-border"
-              data-ocid="distribution.close_button"
-            >
-              Close
-            </Button>
-          )}
-        </DialogFooter>
+          <Button
+            type="button"
+            onClick={onClose}
+            className="font-ui font-bold w-full mt-1"
+            data-ocid="distribution.close_button"
+          >
+            Keep Going!
+          </Button>
+        </motion.div>
       </DialogContent>
     </Dialog>
   );
@@ -483,7 +401,7 @@ function DistributionCTABar({
             className="flex-1 text-sm font-ui font-bold min-w-0"
             style={{ color: "oklch(0.85 0.18 72)" }}
           >
-            #1 Chart-Topper — Your track is ready for Distribution!
+            #1 Chart-Topper — You're making history!
           </span>
           <Button
             size="sm"
@@ -501,8 +419,8 @@ function DistributionCTABar({
             }}
             data-ocid="distribution.submit.primary_button"
           >
-            <Rocket className="h-3 w-3" />
-            Submit to Distribution
+            <Crown className="h-3 w-3" />
+            You're #1!
           </Button>
         </motion.div>
         <DistributionModal
@@ -538,7 +456,7 @@ function DistributionCTABar({
             className="flex-1 text-xs font-ui font-semibold min-w-0"
             style={{ color: "oklch(0.80 0.03 260)" }}
           >
-            Your track is trending — Consider Distribution
+            Your track is trending — Keep climbing!
           </span>
           <Button
             size="sm"
@@ -554,7 +472,7 @@ function DistributionCTABar({
             }}
             data-ocid="distribution.submit.secondary_button"
           >
-            Submit
+            Keep Going
           </Button>
         </motion.div>
         <DistributionModal
@@ -590,7 +508,7 @@ function DistributionCTABar({
             className="flex-1 text-xs font-ui font-medium min-w-0"
             style={{ color: "oklch(0.75 0.10 50)" }}
           >
-            Rising to the top — Distribution awaits
+            Rising to the top — You're on fire!
           </span>
           <Button
             size="sm"
@@ -606,7 +524,7 @@ function DistributionCTABar({
             }}
             data-ocid="distribution.explore.button"
           >
-            Explore
+            Let's Go!
           </Button>
         </motion.div>
         <DistributionModal
@@ -636,7 +554,7 @@ function TrackCard({
   contextQueue: QueueTrack[];
   isTop3: boolean;
 }) {
-  const [expanded, setExpanded] = useState(false);
+  const [detailOpen, setDetailOpen] = useState(false);
   const [userRating, setUserRating] = useState(0);
   const [requestOpen, setRequestOpen] = useState(false);
   const [requestMessage, setRequestMessage] = useState("");
@@ -723,155 +641,182 @@ function TrackCard({
   };
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 12 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: index * 0.04 }}
-      data-ocid={ocid}
-      className="group"
-    >
-      <div
+    <>
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        transition={{ delay: index * 0.035, duration: 0.3 }}
+        data-ocid={ocid}
         className={cn(
-          "rounded-xl border bg-card transition-all duration-300 overflow-hidden",
+          "group relative rounded-xl overflow-hidden cursor-pointer",
+          "bg-card border transition-all duration-300",
           isTopTrack
-            ? "border-gold/30 shadow-[0_0_40px_oklch(0.78_0.17_72/0.12),0_2px_20px_oklch(0_0_0/0.5)]"
-            : "border-border",
-          "hover:border-gold/25 hover:shadow-[0_0_30px_oklch(0.78_0.17_72/0.08),0_4px_32px_oklch(0_0_0/0.4)]",
-          expanded && !isTopTrack && "border-gold/20",
+            ? "border-gold/40 shadow-[0_0_32px_oklch(0.78_0.17_72/0.18),0_4px_24px_oklch(0_0_0/0.6)]"
+            : rank <= 3
+              ? "border-border shadow-[0_4px_24px_oklch(0_0_0/0.5)]"
+              : "border-border/50",
+          isCurrentTrack
+            ? "ring-2 ring-gold/50 shadow-[0_0_28px_oklch(0.78_0.17_72/0.25)]"
+            : "hover:border-gold/30 hover:shadow-[0_0_24px_oklch(0.78_0.17_72/0.1),0_8px_32px_oklch(0_0_0/0.5)]",
         )}
       >
-        {isTopTrack && (
-          <div className="absolute left-0 top-0 bottom-0 w-[3px] bg-gradient-to-b from-gold via-gold/80 to-transparent rounded-l-xl" />
-        )}
+        {/* ── Cover Art ─────────────────────────────────────── */}
+        <button
+          type="button"
+          className="relative w-full aspect-[2/3] overflow-hidden bg-secondary w-full p-0 border-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-gold/50"
+          onClick={handlePlayPause}
+          aria-label={
+            isPlaying ? `Pause ${track.title}` : `Play ${track.title}`
+          }
+        >
+          {coverUrl ? (
+            <img
+              src={coverUrl}
+              alt={`${track.title} cover`}
+              className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+            />
+          ) : (
+            <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-secondary to-background">
+              <Music2 className="h-12 w-12 text-muted-foreground/40" />
+            </div>
+          )}
 
-        {/* Header row */}
-        <div className="w-full flex items-center gap-3 p-4">
-          {/* Clickable left portion — expand/collapse */}
-          <button
-            type="button"
-            onClick={() => setExpanded((p) => !p)}
-            className="flex items-center gap-3 flex-1 min-w-0 text-left"
-            aria-expanded={expanded}
-          >
-            <RankBadge rank={rank} />
+          {/* Dark gradient overlay at bottom */}
+          <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent pointer-events-none" />
 
-            {/* Album art */}
+          {/* Top-left: Rank badge */}
+          <div className="absolute top-2 left-2 z-10">
             <div
               className={cn(
-                "h-14 w-14 rounded-lg overflow-hidden shrink-0 bg-secondary border transition-all duration-300",
-                isTopTrack
-                  ? "border-gold/40 shadow-[0_0_12px_oklch(0.78_0.17_72/0.25)]"
-                  : "border-border group-hover:border-gold/20",
+                "h-7 w-7 rounded-full flex items-center justify-center text-xs font-display font-black shadow-lg",
+                rank === 1
+                  ? "bg-gradient-to-br from-yellow-400 to-amber-600 text-black shadow-[0_0_12px_oklch(0.78_0.17_72/0.6)]"
+                  : rank === 2
+                    ? "bg-gradient-to-br from-slate-300 to-slate-500 text-black"
+                    : rank === 3
+                      ? "bg-gradient-to-br from-orange-400 to-orange-700 text-white"
+                      : "bg-black/60 text-white border border-white/20 backdrop-blur-sm",
               )}
             >
-              {coverUrl ? (
-                <img
-                  src={coverUrl}
-                  alt={`${track.title} cover`}
-                  className="h-full w-full object-cover"
-                />
-              ) : (
-                <div className="h-full w-full flex items-center justify-center">
-                  <Music2 className="h-5 w-5 text-muted-foreground" />
-                </div>
-              )}
+              {rank}
             </div>
+          </div>
 
-            {/* Title, artist & location */}
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2 flex-wrap">
-                <h3
-                  className={cn(
-                    "font-display font-bold truncate text-base leading-tight",
-                    isTopTrack ? "text-gold" : "text-foreground",
-                  )}
-                >
-                  {track.title}
-                </h3>
-                {isTop3 && rank <= 3 && <RewardBadge rank={rank} />}
-              </div>
-              <Link
-                to="/artist/$principalId"
-                params={{ principalId: track.ownerId.toString() }}
-                onClick={(e) => e.stopPropagation()}
-                data-ocid="track.artist.link"
-                className="text-sm text-muted-foreground font-ui truncate mt-0.5 hover:text-gold hover:underline cursor-pointer transition-colors duration-150 block"
+          {/* Top-right: Reward badge icon (top 3 only) */}
+          {isTop3 && rank <= 3 && (
+            <div className="absolute top-2 right-2 z-10">
+              <div
+                className={cn(
+                  "h-7 w-7 rounded-full flex items-center justify-center shadow-lg",
+                  rank === 1
+                    ? "bg-yellow-500/90 shadow-[0_0_10px_oklch(0.78_0.17_72/0.5)]"
+                    : rank === 2
+                      ? "bg-slate-400/90"
+                      : "bg-orange-500/90",
+                )}
               >
-                {track.artist}
-              </Link>
-              {locationLabel && (
-                <div className="flex items-center gap-1 mt-1">
-                  <MapPin className="h-3 w-3 text-muted-foreground/60 shrink-0" />
-                  <span className="text-xs text-muted-foreground/70 font-ui truncate">
-                    {locationLabel}
-                  </span>
-                </div>
-              )}
+                {rank === 1 && <Crown className="h-3.5 w-3.5 text-black" />}
+                {rank === 2 && <Star className="h-3.5 w-3.5 text-black" />}
+                {rank === 3 && <Flame className="h-3.5 w-3.5 text-white" />}
+              </div>
             </div>
-          </button>
+          )}
 
-          {/* Right section — rating, likes, request, expand */}
-          <div className="flex items-center gap-2 shrink-0">
-            {/* Rating */}
-            <div className="flex flex-col items-end gap-0.5 shrink-0 hidden sm:flex">
-              <StarRating
-                value={Math.round(averageRating)}
-                size="sm"
-                readonly
-              />
-              <span className="text-xs text-muted-foreground font-ui tabular-nums">
-                {averageRating.toFixed(1)} · {ratingCount}{" "}
-                {ratingCount === 1 ? "rating" : "ratings"}
+          {/* Bottom-left: Live listeners (when playing) */}
+          {isCurrentTrack && (
+            <div
+              className="absolute bottom-2 left-2 z-10 flex items-center gap-1 bg-black/70 backdrop-blur-sm rounded-full px-2 py-0.5"
+              data-ocid="track.live_listeners.panel"
+            >
+              <span className="relative flex h-1.5 w-1.5 shrink-0">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" />
+                <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-green-500" />
+              </span>
+              <span className="text-[10px] font-ui font-semibold text-green-400 tabular-nums">
+                {listenerCount.toLocaleString()}
               </span>
             </div>
+          )}
 
-            {/* Comment count pill */}
-            {commentCount > 0 && (
-              <div className="flex items-center gap-1 text-muted-foreground/70 shrink-0">
-                <MessageCircle className="h-3.5 w-3.5" />
-                <span className="text-xs font-ui tabular-nums">
-                  {commentCount}
-                </span>
-              </div>
+          {/* Center: Play/Pause overlay (on hover or when current track) */}
+          <div
+            className={cn(
+              "absolute inset-0 flex items-center justify-center transition-opacity duration-300",
+              isCurrentTrack
+                ? "opacity-100"
+                : "opacity-0 group-hover:opacity-100",
             )}
+          >
+            <div className="bg-black/50 backdrop-blur-sm rounded-full p-3 border border-white/20 shadow-xl">
+              {isPlaying ? (
+                <Pause className="h-5 w-5 fill-white text-white" />
+              ) : (
+                <Play className="h-5 w-5 fill-white text-white ml-0.5" />
+              )}
+            </div>
+          </div>
+        </button>
 
-            {/* Live listeners badge — only when this track is the current one */}
-            {isCurrentTrack && (
-              <div
-                className="flex items-center gap-1.5 shrink-0"
-                data-ocid="track.live_listeners.panel"
-              >
-                <span className="relative flex h-2 w-2 shrink-0">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" />
-                  <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500" />
-                </span>
-                <span className="text-xs font-ui font-semibold text-green-400 tabular-nums whitespace-nowrap">
-                  {listenerCount.toLocaleString()} listening
-                </span>
-              </div>
+        {/* ── Below Cover Info ──────────────────────────────── */}
+        <button
+          type="button"
+          className="p-2.5 space-y-1.5 text-left w-full block focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold/50"
+          onClick={() => setDetailOpen(true)}
+          aria-label={`Open details for ${track.title}`}
+        >
+          {/* Title */}
+          <h3
+            className={cn(
+              "font-display font-bold text-sm leading-tight truncate",
+              isTopTrack ? "text-gold" : "text-foreground",
             )}
+          >
+            {track.title}
+          </h3>
 
-            {/* Like button */}
+          {/* Artist */}
+          <Link
+            to="/artist/$principalId"
+            params={{ principalId: track.ownerId.toString() }}
+            onClick={(e) => e.stopPropagation()}
+            data-ocid="track.artist.link"
+            className="text-xs text-muted-foreground font-ui truncate hover:text-gold hover:underline cursor-pointer transition-colors duration-150 block"
+          >
+            {track.artist}
+          </Link>
+
+          {/* Rating row */}
+          <div className="flex items-center gap-1.5">
+            <StarRating value={Math.round(averageRating)} size="sm" readonly />
+            <span className="text-[10px] text-muted-foreground/70 font-ui tabular-nums">
+              {averageRating.toFixed(1)}
+            </span>
+          </div>
+
+          {/* Actions row */}
+          <div className="flex items-center gap-1 pt-0.5">
+            {/* Like */}
             <button
               type="button"
-              onClick={handleLike}
+              onClick={(e) => {
+                e.stopPropagation();
+                handleLike(e);
+              }}
               disabled={likeMutation.isPending || isOwner}
               data-ocid="track.like.button"
               aria-label={hasLiked ? "Unlike track" : "Like track"}
               className={cn(
-                "flex items-center gap-1 rounded-lg px-2 py-1.5 text-xs font-ui font-semibold transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold/50",
+                "flex items-center gap-0.5 rounded px-1.5 py-1 text-[10px] font-ui font-semibold transition-all duration-200",
                 hasLiked
-                  ? "text-red-400 bg-red-500/10 hover:bg-red-500/20"
+                  ? "text-red-400 bg-red-500/10"
                   : isOwner
-                    ? "text-muted-foreground/40 cursor-default"
-                    : !isAuthenticated
-                      ? "text-muted-foreground/50 hover:text-muted-foreground"
-                      : "text-muted-foreground hover:text-red-400 hover:bg-red-500/10",
+                    ? "text-muted-foreground/30 cursor-default"
+                    : "text-muted-foreground hover:text-red-400 hover:bg-red-500/10",
               )}
             >
               <Heart
                 className={cn(
-                  "h-3.5 w-3.5 transition-all duration-200",
+                  "h-3 w-3 transition-all duration-200",
                   hasLiked ? "fill-red-400 text-red-400" : "",
                   likeMutation.isPending ? "animate-pulse" : "",
                 )}
@@ -879,7 +824,22 @@ function TrackCard({
               <span className="tabular-nums">{likeCount}</span>
             </button>
 
-            {/* Request More button — only for non-owners */}
+            {/* Comments count */}
+            {commentCount > 0 && (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setDetailOpen(true);
+                }}
+                className="flex items-center gap-0.5 rounded px-1.5 py-1 text-[10px] font-ui text-muted-foreground hover:text-foreground transition-colors"
+              >
+                <MessageCircle className="h-3 w-3" />
+                <span className="tabular-nums">{commentCount}</span>
+              </button>
+            )}
+
+            {/* Request */}
             {!isOwner && (
               <button
                 type="button"
@@ -892,116 +852,267 @@ function TrackCard({
                   setRequestOpen(true);
                 }}
                 data-ocid="track.request.open_modal_button"
-                aria-label="Request more music from this artist"
-                className="flex items-center gap-1 rounded-lg px-2 py-1.5 text-xs font-ui font-semibold text-muted-foreground hover:text-gold hover:bg-gold/10 transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold/50"
+                aria-label="Request more music"
+                className="flex items-center gap-0.5 rounded px-1.5 py-1 text-[10px] font-ui text-muted-foreground hover:text-gold hover:bg-gold/10 transition-all duration-200"
               >
-                <Send className="h-3.5 w-3.5" />
-                <span className="hidden sm:inline">Request</span>
+                <Send className="h-3 w-3" />
               </button>
             )}
 
-            {/* Play / Pause button */}
+            {/* Play button (explicit, separate from cover) */}
             <button
               type="button"
-              onClick={handlePlayPause}
+              onClick={(e) => {
+                e.stopPropagation();
+                handlePlayPause(e);
+              }}
               aria-label={isPlaying ? "Pause" : "Play track"}
               data-ocid="track.play.button"
               className={cn(
-                "flex items-center justify-center h-8 w-8 rounded-full transition-all duration-200 shrink-0",
-                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold/50",
+                "ml-auto flex items-center justify-center h-6 w-6 rounded-full transition-all duration-200",
                 isCurrentTrack
-                  ? "bg-gold/20 border border-gold/40 text-gold hover:bg-gold/30 shadow-[0_0_8px_oklch(0.78_0.17_72/0.3)]"
-                  : "text-muted-foreground hover:text-gold hover:bg-gold/10 border border-transparent hover:border-gold/25",
+                  ? "bg-gold/20 border border-gold/40 text-gold"
+                  : "text-muted-foreground hover:text-gold hover:bg-gold/10 border border-transparent",
               )}
             >
               {isPlaying ? (
-                <Pause className="h-3.5 w-3.5 fill-current" />
+                <Pause className="h-2.5 w-2.5 fill-current" />
               ) : (
-                <Play className="h-3.5 w-3.5 fill-current ml-0.5" />
+                <Play className="h-2.5 w-2.5 fill-current ml-px" />
               )}
             </button>
-
-            {/* Expand icon */}
-            <button
-              type="button"
-              onClick={() => setExpanded((p) => !p)}
-              aria-label={expanded ? "Collapse" : "Expand"}
-              className="text-muted-foreground ml-1 shrink-0 transition-transform duration-200 hover:text-foreground p-1 rounded"
-              style={{
-                transform: expanded ? "rotate(180deg)" : "rotate(0deg)",
-              }}
-            >
-              <ChevronDown className="h-4 w-4" />
-            </button>
           </div>
-        </div>
+        </button>
 
-        {/* Distribution CTA — only for owner when in top 3 and not expanded */}
-        {isTop3 && rank <= 3 && isOwner && !expanded && (
-          <DistributionCTABar
-            rank={rank}
-            trackTitle={track.title}
-            artistName={track.artist}
-          />
+        {/* Top-1 gold glow border */}
+        {isTopTrack && (
+          <div className="absolute inset-0 rounded-xl pointer-events-none ring-1 ring-gold/20" />
         )}
+      </motion.div>
 
-        {/* Expanded detail */}
-        <AnimatePresence>
-          {expanded && (
-            <motion.div
-              initial={{ height: 0, opacity: 0 }}
-              animate={{ height: "auto", opacity: 1 }}
-              exit={{ height: 0, opacity: 0 }}
-              transition={{ duration: 0.25 }}
-              className="overflow-hidden"
-            >
-              <div className="border-t border-border px-4 pb-4 pt-3 space-y-4">
-                {track.description && (
-                  <p className="text-sm text-muted-foreground leading-relaxed">
-                    {track.description}
-                  </p>
-                )}
-
-                {/* Rating widget */}
-                {isAuthenticated ? (
-                  <div className="flex items-center gap-3 pt-1 flex-wrap">
-                    <span className="text-sm text-muted-foreground font-ui">
-                      Your rating:
-                    </span>
-                    <StarRating
-                      value={userRating}
-                      onChange={setUserRating}
-                      size="lg"
-                    />
-                    <Button
-                      size="sm"
-                      disabled={!userRating || rateMutation.isPending}
-                      onClick={handleRate}
-                      className="ml-2 bg-gold/20 text-gold hover:bg-gold/30 border border-gold/30 font-ui font-bold"
-                      data-ocid="track.rate.submit_button"
-                    >
-                      {rateMutation.isPending ? (
-                        <Loader2 className="h-3 w-3 animate-spin" />
-                      ) : (
-                        "Rate"
-                      )}
-                    </Button>
-                  </div>
-                ) : (
-                  <p className="text-xs text-muted-foreground font-ui italic">
-                    Sign in to rate this track
-                  </p>
-                )}
-
-                <Separator className="bg-border/50" />
-                <CommentsSection trackId={track.id} />
+      {/* ── Detail Dialog ─────────────────────────────────── */}
+      <Dialog open={detailOpen} onOpenChange={setDetailOpen}>
+        <DialogContent
+          className="bg-card border-border max-w-lg max-h-[90vh] overflow-y-auto p-0"
+          data-ocid="track.detail.dialog"
+        >
+          {/* Cover + gradient header */}
+          <div className="relative h-56 w-full overflow-hidden rounded-t-lg">
+            {coverUrl ? (
+              <img
+                src={coverUrl}
+                alt={`${track.title} cover`}
+                className="w-full h-full object-cover"
+              />
+            ) : (
+              <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-secondary to-background">
+                <Music2 className="h-16 w-16 text-muted-foreground/30" />
               </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </div>
+            )}
+            <div className="absolute inset-0 bg-gradient-to-t from-card via-card/50 to-transparent" />
 
-      {/* Request Music Dialog */}
+            {/* Rank + reward in overlay */}
+            <div className="absolute bottom-4 left-4 flex items-center gap-2">
+              <RankBadge rank={rank} />
+              {isTop3 && rank <= 3 && <RewardBadge rank={rank} />}
+            </div>
+          </div>
+
+          <div className="px-5 pb-5 pt-2 space-y-4">
+            {/* Title + artist */}
+            <div className="space-y-1">
+              <DialogTitle
+                className={cn(
+                  "font-display font-black text-xl leading-tight",
+                  isTopTrack ? "text-gold" : "text-foreground",
+                )}
+              >
+                {track.title}
+              </DialogTitle>
+              <Link
+                to="/artist/$principalId"
+                params={{ principalId: track.ownerId.toString() }}
+                onClick={() => setDetailOpen(false)}
+                data-ocid="track.detail.artist.link"
+                className="text-sm text-muted-foreground font-ui hover:text-gold hover:underline transition-colors"
+              >
+                {track.artist}
+              </Link>
+              {locationLabel && (
+                <div className="flex items-center gap-1">
+                  <MapPin className="h-3 w-3 text-muted-foreground/60 shrink-0" />
+                  <span className="text-xs text-muted-foreground/70 font-ui">
+                    {locationLabel}
+                  </span>
+                </div>
+              )}
+            </div>
+
+            {/* Description */}
+            {track.description && (
+              <p className="text-sm text-muted-foreground leading-relaxed">
+                {track.description}
+              </p>
+            )}
+
+            {/* Rating + stats row */}
+            <div className="flex items-center gap-3 flex-wrap">
+              <div className="flex items-center gap-2">
+                <StarRating
+                  value={Math.round(averageRating)}
+                  size="sm"
+                  readonly
+                />
+                <span className="text-xs text-muted-foreground font-ui tabular-nums">
+                  {averageRating.toFixed(1)} · {ratingCount}{" "}
+                  {ratingCount === 1 ? "rating" : "ratings"}
+                </span>
+              </div>
+              {commentCount > 0 && (
+                <div className="flex items-center gap-1 text-muted-foreground/70">
+                  <MessageCircle className="h-3.5 w-3.5" />
+                  <span className="text-xs font-ui tabular-nums">
+                    {commentCount}
+                  </span>
+                </div>
+              )}
+            </div>
+
+            {/* Action buttons row */}
+            <div className="flex items-center gap-2 flex-wrap">
+              {/* Play/Pause */}
+              <Button
+                size="sm"
+                onClick={(e) => {
+                  handlePlayPause(e);
+                }}
+                className={cn(
+                  "gap-2 font-ui font-bold",
+                  isCurrentTrack
+                    ? "bg-gold/20 text-gold border border-gold/40 hover:bg-gold/30"
+                    : "bg-gold/15 text-gold border border-gold/25 hover:bg-gold/25",
+                )}
+                data-ocid="track.detail.play.button"
+              >
+                {isPlaying ? (
+                  <>
+                    <Pause className="h-3.5 w-3.5 fill-current" /> Pause
+                  </>
+                ) : (
+                  <>
+                    <Play className="h-3.5 w-3.5 fill-current" /> Play
+                  </>
+                )}
+              </Button>
+
+              {/* Like */}
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={(e) => handleLike(e)}
+                disabled={likeMutation.isPending || isOwner}
+                className={cn(
+                  "gap-2 font-ui",
+                  hasLiked
+                    ? "text-red-400 border-red-500/30 bg-red-500/10 hover:bg-red-500/20"
+                    : "border-border",
+                )}
+                data-ocid="track.detail.like.button"
+              >
+                <Heart
+                  className={cn(
+                    "h-3.5 w-3.5",
+                    hasLiked ? "fill-red-400 text-red-400" : "",
+                  )}
+                />
+                {likeCount}
+              </Button>
+
+              {/* Request */}
+              {!isOwner && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => {
+                    if (!isAuthenticated) {
+                      toast.error("Sign in to request music");
+                      return;
+                    }
+                    setDetailOpen(false);
+                    setRequestOpen(true);
+                  }}
+                  className="gap-2 font-ui border-border"
+                  data-ocid="track.detail.request.open_modal_button"
+                >
+                  <Send className="h-3.5 w-3.5" />
+                  Request
+                </Button>
+              )}
+
+              {/* Live listeners */}
+              {isCurrentTrack && (
+                <div
+                  className="flex items-center gap-1.5 ml-auto"
+                  data-ocid="track.live_listeners.panel"
+                >
+                  <span className="relative flex h-2 w-2">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" />
+                    <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500" />
+                  </span>
+                  <span className="text-xs font-ui font-semibold text-green-400 tabular-nums">
+                    {listenerCount.toLocaleString()} listening
+                  </span>
+                </div>
+              )}
+            </div>
+
+            {/* Distribution CTA — only for owner when in top 3 */}
+            {isTop3 && rank <= 3 && isOwner && (
+              <DistributionCTABar
+                rank={rank}
+                trackTitle={track.title}
+                artistName={track.artist}
+              />
+            )}
+
+            {/* Rate widget */}
+            {isAuthenticated ? (
+              <div className="flex items-center gap-3 flex-wrap pt-1">
+                <span className="text-sm text-muted-foreground font-ui">
+                  Your rating:
+                </span>
+                <StarRating
+                  value={userRating}
+                  onChange={setUserRating}
+                  size="lg"
+                />
+                <Button
+                  size="sm"
+                  disabled={!userRating || rateMutation.isPending}
+                  onClick={handleRate}
+                  className="ml-1 bg-gold/20 text-gold hover:bg-gold/30 border border-gold/30 font-ui font-bold"
+                  data-ocid="track.rate.submit_button"
+                >
+                  {rateMutation.isPending ? (
+                    <Loader2 className="h-3 w-3 animate-spin" />
+                  ) : (
+                    "Rate"
+                  )}
+                </Button>
+              </div>
+            ) : (
+              <p className="text-xs text-muted-foreground font-ui italic">
+                Sign in to rate this track
+              </p>
+            )}
+
+            <Separator className="bg-border/50" />
+            <CommentsSection trackId={track.id} />
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Request Music Dialog ──────────────────────────── */}
       <Dialog open={requestOpen} onOpenChange={setRequestOpen}>
         <DialogContent
           className="bg-card border-border max-w-md"
@@ -1053,22 +1164,24 @@ function TrackCard({
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </motion.div>
+    </>
   );
 }
 
 function TrackSkeleton() {
   return (
-    <div className="rounded-xl border border-border bg-card p-4 flex items-center gap-3">
-      <Skeleton className="h-8 w-8 rounded-full shrink-0" />
-      <Skeleton className="h-14 w-14 rounded-lg shrink-0" />
-      <div className="flex-1 space-y-2">
-        <Skeleton className="h-4 w-48" />
-        <Skeleton className="h-3 w-32" />
-      </div>
-      <div className="space-y-1.5">
-        <Skeleton className="h-3.5 w-24" />
-        <Skeleton className="h-3 w-16" />
+    <div className="rounded-xl border border-border bg-card overflow-hidden">
+      {/* Cover skeleton — 2/3 aspect ratio */}
+      <Skeleton className="w-full aspect-[2/3] rounded-none" />
+      {/* Info below */}
+      <div className="p-2.5 space-y-2">
+        <Skeleton className="h-3.5 w-4/5" />
+        <Skeleton className="h-3 w-3/5" />
+        <Skeleton className="h-3 w-2/5" />
+        <div className="flex gap-1 pt-0.5">
+          <Skeleton className="h-5 w-10 rounded" />
+          <Skeleton className="h-5 w-8 rounded" />
+        </div>
       </div>
     </div>
   );
@@ -1180,8 +1293,11 @@ function ChartsList({
 
   if (isLoading) {
     return (
-      <div className="space-y-3" data-ocid="charts.loading_state">
-        {[1, 2, 3, 4, 5].map((i) => (
+      <div
+        className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3"
+        data-ocid="charts.loading_state"
+      >
+        {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((i) => (
           <TrackSkeleton key={i} />
         ))}
       </div>
@@ -1257,9 +1373,9 @@ function ChartsList({
   }
 
   return (
-    <div className="space-y-3" data-ocid="charts.list">
+    <div className="space-y-4" data-ocid="charts.list">
       {/* Play All button */}
-      <div className="flex justify-end mb-1">
+      <div className="flex justify-end">
         <Button
           size="sm"
           onClick={() => player.playAll(queueTracks)}
@@ -1271,20 +1387,23 @@ function ChartsList({
         </Button>
       </div>
 
-      {filteredCharts.map((entry, idx) => {
-        const originalRank =
-          charts.findIndex((c) => c.track.id === entry.track.id) + 1;
-        return (
-          <TrackCard
-            key={entry.track.id}
-            entry={entry}
-            rank={originalRank}
-            index={idx}
-            contextQueue={queueTracks}
-            isTop3={top3Ids.has(entry.track.id)}
-          />
-        );
-      })}
+      {/* Grid */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
+        {filteredCharts.map((entry, idx) => {
+          const originalRank =
+            charts.findIndex((c) => c.track.id === entry.track.id) + 1;
+          return (
+            <TrackCard
+              key={entry.track.id}
+              entry={entry}
+              rank={originalRank}
+              index={idx}
+              contextQueue={queueTracks}
+              isTop3={top3Ids.has(entry.track.id)}
+            />
+          );
+        })}
+      </div>
     </div>
   );
 }

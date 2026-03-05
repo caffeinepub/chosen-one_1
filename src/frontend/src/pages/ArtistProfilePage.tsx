@@ -22,6 +22,8 @@ import {
   ChevronDown,
   Eye,
   Heart,
+  Library,
+  ListMusic,
   Loader2,
   MapPin,
   MessageCircle,
@@ -36,10 +38,12 @@ import {
 } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useState } from "react";
-import type { Track } from "../backend.d";
+import { toast } from "sonner";
+import type { Playlist, Track } from "../backend.d";
 import { CommentsSection } from "../components/CommentsSection";
 import { StarRating } from "../components/StarRating";
 import { type QueueTrack, usePlayer } from "../contexts/PlayerContext";
+import { useActor } from "../hooks/useActor";
 import { useInternetIdentity } from "../hooks/useInternetIdentity";
 import { saveProfileViewNotification } from "../hooks/useProfileViewNotifications";
 import {
@@ -48,6 +52,7 @@ import {
   useFollowArtist,
   useFollowerCount,
   useIsFollowing,
+  usePublicPlaylistsByOwner,
   useTracksByOwner,
   useUnfollowArtist,
   useUserProfile,
@@ -385,6 +390,84 @@ function ProfileSkeleton() {
   );
 }
 
+/* ── Public playlist card ────────────────────────────── */
+function PublicPlaylistCard({
+  playlist,
+  index,
+}: {
+  playlist: Playlist;
+  index: number;
+}) {
+  const player = usePlayer();
+  const { actor } = useActor();
+  const [loading, setLoading] = useState(false);
+
+  const handleLoad = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!actor || playlist.trackIds.length === 0) return;
+    setLoading(true);
+    try {
+      const tracks = await Promise.all(
+        playlist.trackIds.map((id) => actor.getTrackById(id)),
+      );
+      const queueTracks = tracks
+        .filter((t) => !!t)
+        .map((t) => ({
+          id: t!.id,
+          title: t!.title,
+          artist: t!.artist,
+          audioUrl: t!.audioFileKey.getDirectURL(),
+          coverUrl: t!.coverKey?.getDirectURL(),
+        }));
+      if (queueTracks.length > 0) {
+        player.playAll(queueTracks);
+        toast.success(`Playing "${playlist.name}"`);
+      }
+    } catch {
+      toast.error("Failed to load playlist");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: index * 0.06 }}
+      data-ocid={`artist.playlists.item.${index + 1}`}
+      className="flex items-center gap-3 rounded-xl border border-border bg-card p-3 hover:border-gold/20 transition-all duration-200 group"
+    >
+      <div className="h-10 w-10 rounded-lg bg-secondary border border-border flex items-center justify-center shrink-0 group-hover:border-gold/25 transition-colors">
+        <ListMusic className="h-4 w-4 text-muted-foreground/50 group-hover:text-gold/60 transition-colors" />
+      </div>
+      <div className="flex-1 min-w-0">
+        <p className="font-display font-bold text-sm text-foreground truncate leading-tight">
+          {playlist.name}
+        </p>
+        <p className="text-xs font-ui text-muted-foreground">
+          {playlist.trackIds.length}{" "}
+          {playlist.trackIds.length === 1 ? "track" : "tracks"}
+        </p>
+      </div>
+      <Button
+        size="sm"
+        onClick={handleLoad}
+        disabled={loading || playlist.trackIds.length === 0}
+        data-ocid={`artist.playlists.load_queue.button.${index + 1}`}
+        className="gap-1.5 h-8 px-3 bg-gold/10 text-gold hover:bg-gold/20 border border-gold/20 font-ui text-xs shrink-0"
+      >
+        {loading ? (
+          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+        ) : (
+          <Play className="h-3.5 w-3.5 fill-current" />
+        )}
+        Play
+      </Button>
+    </motion.div>
+  );
+}
+
 /* ── Main page ───────────────────────────────────────── */
 export function ArtistProfilePage() {
   const { principalId } = useParams({ strict: false }) as {
@@ -415,6 +498,7 @@ export function ArtistProfilePage() {
   const { data: followerCount } = useFollowerCount(principal);
   const followMutation = useFollowArtist();
   const unfollowMutation = useUnfollowArtist();
+  const { data: publicPlaylists } = usePublicPlaylistsByOwner(principal);
 
   // Caller profile for viewer name
   const { data: callerProfile } = useCallerProfile();
@@ -853,6 +937,34 @@ export function ArtistProfilePage() {
           </div>
         )}
       </div>
+
+      {/* Public playlists section — only rendered when artist has public playlists */}
+      {publicPlaylists && publicPlaylists.length > 0 && (
+        <motion.div
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.2 }}
+          className="px-4 sm:px-6 mt-8 space-y-4"
+          data-ocid="artist.playlists.section"
+        >
+          <div className="flex items-center gap-2">
+            <Library className="h-4 w-4 text-gold/70" />
+            <h2 className="font-display font-bold text-lg">
+              Playlists{" "}
+              <span className="text-gold">· {publicPlaylists.length}</span>
+            </h2>
+          </div>
+          <div className="space-y-2">
+            {publicPlaylists.map((playlist, idx) => (
+              <PublicPlaylistCard
+                key={playlist.id}
+                playlist={playlist}
+                index={idx}
+              />
+            ))}
+          </div>
+        </motion.div>
+      )}
     </main>
   );
 }
