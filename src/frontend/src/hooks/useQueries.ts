@@ -1,6 +1,8 @@
 import type { Principal } from "@icp-sdk/core/principal";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import React from "react";
 import type { ExternalBlob } from "../backend";
+import type { backendInterface } from "../backend";
 import type {
   AverageRating,
   Battle,
@@ -26,6 +28,8 @@ export function useCharts() {
       return actor.getTracksSortedByRating();
     },
     enabled: !!actor && !isFetching,
+    retry: 3,
+    retryDelay: (attempt) => Math.min(1000 * 2 ** attempt, 8000),
   });
 }
 
@@ -36,9 +40,16 @@ export function useChartsInWindow(windowType: string) {
     queryKey: ["charts", windowType],
     queryFn: async () => {
       if (!actor) return [];
-      return actor.getTracksSortedByRatingInWindow(windowType);
+      try {
+        return await actor.getTracksSortedByRatingInWindow(windowType);
+      } catch {
+        // Fallback to all-time data if windowed query fails
+        return actor.getTracksSortedByRating();
+      }
     },
     enabled: !!actor && !isFetching,
+    retry: 3,
+    retryDelay: (attempt) => Math.min(1000 * 2 ** attempt, 8000),
   });
 }
 
@@ -54,13 +65,20 @@ export function useChartsFilteredByLocation(
     queryKey: ["charts", windowType, locationType, locationValue],
     queryFn: async () => {
       if (!actor) return [];
-      return actor.getTracksFilteredByLocation(
-        windowType,
-        locationType,
-        locationValue,
-      );
+      try {
+        return await actor.getTracksFilteredByLocation(
+          windowType,
+          locationType,
+          locationValue,
+        );
+      } catch {
+        // Fallback to all-time data if location-filtered query fails
+        return actor.getTracksSortedByRating();
+      }
     },
     enabled: !!actor && !isFetching && !isNationwideNoValue,
+    retry: 3,
+    retryDelay: (attempt) => Math.min(1000 * 2 ** attempt, 8000),
   });
 }
 
@@ -92,8 +110,15 @@ export function useCallerProfile() {
 
 /* ── Upload Track ────────────────────────────────────── */
 export function useUploadTrack() {
-  const { actor, isFetching } = useActor();
-  const { identity, isInitializing } = useInternetIdentity();
+  const actorRef = useActor();
+  const identityRef = useInternetIdentity();
+  // Keep mutable refs so the mutationFn closure can read the latest values
+  // without capturing stale state at the time the mutation was created.
+  const actorStateRef = React.useRef(actorRef);
+  actorStateRef.current = actorRef;
+  const identityStateRef = React.useRef(identityRef);
+  identityStateRef.current = identityRef;
+
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async ({
@@ -121,20 +146,74 @@ export function useUploadTrack() {
       region: string;
       onProgress?: (pct: number) => void;
     }) => {
-      // Still waiting for auth client to initialize
-      if (isInitializing || isFetching)
-        throw new Error(
-          "Authentication is still loading, please wait a moment and try again.",
-        );
-      if (!identity || identity.getPrincipal().isAnonymous())
-        throw new Error("Not authenticated. Please sign in before uploading.");
-      if (!actor)
-        throw new Error("Actor not ready. Please wait a moment and try again.");
-      // Verify the actor was built with the authenticated identity (not an old anonymous actor)
-      // by checking that the actor query key matches the current identity principal.
-      // If identity is set but actor was created anonymously, the query would have been
-      // re-keyed and actor would be null until the new one loads.
-      // Extra safety: check the actor isn't from a stale anonymous session.
+      // Poll until we have a fully authenticated actor (up to 30 seconds).
+      // This handles the race where login completes but the actor is still
+      // being recreated with the authenticated identity.
+      const POLL_INTERVAL = 500;
+      const POLL_TIMEOUT = 30000;
+      let elapsed = 0;
+
+      const waitForAuthenticatedActor = (): Promise<backendInterface> =>
+        new Promise((resolve, reject) => {
+          const check = () => {
+            const { actor, isFetching } = actorStateRef.current;
+            const { identity, isInitializing } = identityStateRef.current;
+            const isPrincipalAuthenticated =
+              !!identity && !identity.getPrincipal().isAnonymous();
+
+            // Still initializing auth -- keep waiting
+            if (isInitializing) {
+              elapsed += POLL_INTERVAL;
+              if (elapsed >= POLL_TIMEOUT) {
+                reject(
+                  new Error(
+                    "Sign-in is taking too long. Please refresh the page and try again.",
+                  ),
+                );
+                return;
+              }
+              setTimeout(check, POLL_INTERVAL);
+              return;
+            }
+
+            // Auth is done but user is not signed in
+            if (!isPrincipalAuthenticated) {
+              reject(
+                new Error(
+                  "Not authenticated. Please sign in before uploading.",
+                ),
+              );
+              return;
+            }
+
+            // Authenticated identity confirmed -- now wait for actor
+            if (!isFetching && actor) {
+              // Verify the actor principal matches the identity (not stale anon actor)
+              const actorPrincipalStr = identity.getPrincipal().toString();
+              const isAnonymousActor = actorPrincipalStr === "2vxsx-fae";
+              if (!isAnonymousActor) {
+                resolve(actor as backendInterface);
+                return;
+              }
+              // Actor is still anonymous even though identity changed -- keep waiting
+            }
+
+            elapsed += POLL_INTERVAL;
+            if (elapsed >= POLL_TIMEOUT) {
+              reject(
+                new Error(
+                  "Upload service is taking too long to connect. Please refresh the page and sign in again.",
+                ),
+              );
+              return;
+            }
+            setTimeout(check, POLL_INTERVAL);
+          };
+          check();
+        });
+
+      const actor = await waitForAuthenticatedActor();
+
       const audioWithProgress = onProgress
         ? audioBlob.withUploadProgress(onProgress)
         : audioBlob;

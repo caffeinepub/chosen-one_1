@@ -10,8 +10,6 @@ import { Footer } from "./components/Footer";
 import { GlobalPlayerBar } from "./components/GlobalPlayerBar";
 import { Navbar } from "./components/Navbar";
 import { PlayerProvider, usePlayer } from "./contexts/PlayerContext";
-import { AdminSetupPage } from "./pages/AdminSetupPage";
-import { AdminSubscribersPage } from "./pages/AdminSubscribersPage";
 import { ArtistProfilePage } from "./pages/ArtistProfilePage";
 import { BattlesPage } from "./pages/BattlesPage";
 import { ChartsPage } from "./pages/ChartsPage";
@@ -113,18 +111,6 @@ const battlesRoute = createRoute({
   component: BattlesPage,
 });
 
-const adminSubscribersRoute = createRoute({
-  getParentRoute: () => rootRoute,
-  path: "/admin/subscribers",
-  component: AdminSubscribersPage,
-});
-
-const adminSetupRoute = createRoute({
-  getParentRoute: () => rootRoute,
-  path: "/admin/setup",
-  component: AdminSetupPage,
-});
-
 /* ── Router ──────────────────────────────────────────── */
 const routeTree = rootRoute.addChildren([
   chartsRoute,
@@ -135,8 +121,6 @@ const routeTree = rootRoute.addChildren([
   myTracksRoute,
   profileRoute,
   artistProfileRoute,
-  adminSubscribersRoute,
-  adminSetupRoute,
 ]);
 
 const router = createRouter({ routeTree });

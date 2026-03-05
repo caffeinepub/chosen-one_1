@@ -22,7 +22,7 @@ import {
   XCircle,
 } from "lucide-react";
 import { motion } from "motion/react";
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { ExternalBlob } from "../backend";
 import { LoginGate } from "../components/LoginGate";
@@ -96,8 +96,20 @@ function formatBytes(bytes: number) {
 export function UploadPage() {
   const { identity, isInitializing } = useInternetIdentity();
   const { actor, isFetching: isActorFetching } = useActor();
+  // After 20 seconds of waiting for the actor, show a refresh prompt
+  // so the user isn't stuck with an infinite spinner.
+  const [actorTimedOut, setActorTimedOut] = useState(false);
   const navigate = useNavigate();
   const uploadMutation = useUploadTrack();
+
+  useEffect(() => {
+    if (actor && !isActorFetching) {
+      setActorTimedOut(false);
+      return;
+    }
+    const t = setTimeout(() => setActorTimedOut(true), 20000);
+    return () => clearTimeout(t);
+  }, [actor, isActorFetching]);
 
   const [title, setTitle] = useState("");
   const [artist, setArtist] = useState("");
@@ -196,6 +208,9 @@ export function UploadPage() {
     }
   };
 
+  const isIdentityAuthenticated =
+    !!identity && !identity.getPrincipal().isAnonymous();
+
   // Wait for auth client to finish initializing before deciding to show login gate
   if (isInitializing) {
     return (
@@ -205,7 +220,7 @@ export function UploadPage() {
     );
   }
 
-  if (!identity || identity.getPrincipal().isAnonymous()) {
+  if (!isIdentityAuthenticated) {
     return (
       <main className="container py-8">
         <LoginGate message="Sign in to upload your AI music to the charts" />
@@ -213,8 +228,32 @@ export function UploadPage() {
     );
   }
 
-  // Identity is set but the authenticated actor is still initializing or hasn't loaded yet
-  if (isActorFetching || !actor) {
+  // Wait for the authenticated actor to be ready.
+  // The actor starts as an anonymous actor and is replaced once login is confirmed --
+  // we must wait for isFetching=false AND actor present AND identity is authenticated.
+  const isActorAuthenticated =
+    !!actor && !isActorFetching && isIdentityAuthenticated;
+
+  if (!isActorAuthenticated) {
+    if (actorTimedOut) {
+      return (
+        <main className="container py-8 flex items-center justify-center min-h-[40vh]">
+          <div className="flex flex-col items-center gap-4 text-center max-w-sm">
+            <p className="text-sm text-muted-foreground font-ui">
+              Having trouble connecting to your account. Please refresh the page
+              and sign in again.
+            </p>
+            <Button
+              variant="outline"
+              onClick={() => window.location.reload()}
+              className="font-ui border-gold/30 text-gold hover:bg-gold/10"
+            >
+              Refresh Page
+            </Button>
+          </div>
+        </main>
+      );
+    }
     return (
       <main className="container py-8 flex items-center justify-center min-h-[40vh]">
         <div className="flex flex-col items-center gap-3 text-center">

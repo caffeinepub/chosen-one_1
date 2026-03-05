@@ -1136,19 +1136,23 @@ function ChartsList({
   let data: AverageRating[] | undefined;
   let isLoading: boolean;
   let isError: boolean;
+  let refetchFn: () => void;
 
   if (locationScope !== "nationwide") {
     data = locationQuery.data;
     isLoading = locationQuery.isLoading;
-    isError = locationQuery.isError;
+    isError = locationQuery.isError && !locationQuery.data;
+    refetchFn = locationQuery.refetch;
   } else if (windowType === "alltime") {
     data = allTimeQuery.data;
     isLoading = allTimeQuery.isLoading;
-    isError = allTimeQuery.isError;
+    isError = allTimeQuery.isError && !allTimeQuery.data;
+    refetchFn = allTimeQuery.refetch;
   } else {
     data = windowQuery.data;
     isLoading = windowQuery.isLoading;
-    isError = windowQuery.isError;
+    isError = windowQuery.isError && !windowQuery.data;
+    refetchFn = windowQuery.refetch;
   }
 
   // Cap at 100
@@ -1187,10 +1191,23 @@ function ChartsList({
   if (isError) {
     return (
       <div
-        className="rounded-xl border border-destructive/30 bg-destructive/5 p-6 text-center"
+        className="rounded-xl border border-destructive/30 bg-destructive/5 p-8 text-center space-y-3"
         data-ocid="charts.error_state"
       >
-        <p className="text-destructive font-ui">Failed to load charts</p>
+        <p className="text-destructive font-ui font-semibold">
+          Could not load charts right now
+        </p>
+        <p className="text-muted-foreground text-sm font-ui">
+          This can happen if the network is slow. Try again in a moment.
+        </p>
+        <button
+          type="button"
+          onClick={refetchFn}
+          data-ocid="charts.retry.button"
+          className="inline-flex items-center gap-2 rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-2 text-sm font-ui font-semibold text-destructive hover:bg-destructive/20 transition-colors"
+        >
+          Retry
+        </button>
       </div>
     );
   }

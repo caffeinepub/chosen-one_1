@@ -72,10 +72,10 @@ function AlreadyAdminPanel() {
       </div>
 
       {/* CTA */}
-      <Link to="/admin/subscribers" data-ocid="admin_setup.subscribers.link">
+      <Link to="/" data-ocid="admin_setup.home.link">
         <Button className="gap-2 bg-gold/20 text-gold hover:bg-gold/30 border border-gold/30 font-ui font-bold">
           <Shield className="h-4 w-4" />
-          Go to Admin Dashboard
+          Go to Charts
         </Button>
       </Link>
     </motion.div>
@@ -145,10 +145,10 @@ function ClaimAdminForm() {
           </p>
         </div>
 
-        <Link to="/admin/subscribers" data-ocid="admin_setup.subscribers.link">
+        <Link to="/" data-ocid="admin_setup.home.link">
           <Button className="gap-2 bg-gold/20 text-gold hover:bg-gold/30 border border-gold/30 font-ui font-bold">
             <Shield className="h-4 w-4" />
-            Open Admin Dashboard
+            Go to Charts
           </Button>
         </Link>
       </motion.div>

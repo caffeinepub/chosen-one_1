@@ -5,6 +5,12 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
 import type { Principal } from "@icp-sdk/core/principal";
 import { Link, useLocation } from "@tanstack/react-router";
@@ -12,12 +18,11 @@ import {
   Bell,
   CornerDownRight,
   Eye,
-  KeyRound,
   ListMusic,
   LogIn,
   LogOut,
+  Menu,
   Music2,
-  Shield,
   Swords,
   Trophy,
   Upload,
@@ -34,7 +39,6 @@ import {
   useMyProfileViewNotifications,
 } from "../hooks/useProfileViewNotifications";
 import {
-  useIsCallerAdmin,
   useMarkNotificationsRead,
   useMyNotifications,
   usePendingBattlesForMe,
@@ -200,10 +204,10 @@ export function Navbar() {
   const isAuthenticated = !!identity;
   const location = useLocation();
   const [notifOpen, setNotifOpen] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
   const { data: notifications } = useMyNotifications();
   const markRead = useMarkNotificationsRead();
   const { data: pendingBattles } = usePendingBattlesForMe();
-  const { data: isAdmin } = useIsCallerAdmin();
 
   // Profile view notifications (localStorage-only, client-side)
   const {
@@ -246,130 +250,35 @@ export function Navbar() {
   return (
     <header className="sticky top-0 z-50 border-b border-border bg-background/90 backdrop-blur-xl">
       <div className="container flex h-16 items-center justify-between">
-        {/* Logo */}
-        <Link to="/" className="flex items-center gap-2 group">
-          <motion.div
-            className="relative flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10"
-            whileHover={{ scale: 1.05 }}
+        {/* Left side: Hamburger + Logo */}
+        <div className="flex items-center gap-3">
+          {/* Hamburger button */}
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-9 w-9 p-0 text-muted-foreground hover:text-foreground hover:bg-secondary/60"
+            onClick={() => setMenuOpen(true)}
+            data-ocid="nav.hamburger.button"
+            aria-label="Open navigation menu"
           >
-            <Music2 className="h-5 w-5 text-gold" />
-            <div className="absolute inset-0 rounded-lg bg-gold/10 opacity-0 group-hover:opacity-100 transition-opacity" />
-          </motion.div>
-          <span className="font-display text-xl font-black tracking-tight">
-            <span className="text-gold">CHOSEN</span>
-            <span className="text-foreground"> ONE</span>
-          </span>
-        </Link>
+            <Menu className="h-5 w-5" />
+          </Button>
 
-        {/* Nav links — desktop */}
-        <nav className="hidden md:flex items-center gap-1">
-          {navLinks.map((link) => {
-            const Icon = link.icon;
-            const isActive = location.pathname === link.to;
-            const isBattles = link.to === "/battles";
-            const battleBadge =
-              isBattles && isAuthenticated && pendingBattleCount > 0;
-            return (
-              <Link
-                key={link.to}
-                to={link.to}
-                data-ocid={link.ocid}
-                className="relative group"
-              >
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className={cn(
-                    "gap-1.5 font-ui font-semibold text-sm transition-all duration-200",
-                    isActive
-                      ? "text-gold hover:text-gold hover:bg-transparent"
-                      : "text-muted-foreground hover:text-foreground hover:bg-transparent",
-                  )}
-                >
-                  <Icon className="h-4 w-4" />
-                  {link.label}
-                  {battleBadge && (
-                    <span className="ml-0.5 h-4 min-w-4 px-0.5 rounded-full bg-red-500 text-[9px] font-bold text-white flex items-center justify-center font-ui tabular-nums">
-                      {pendingBattleCount > 9 ? "9+" : pendingBattleCount}
-                    </span>
-                  )}
-                </Button>
-                {/* Gold underline indicator */}
-                <span
-                  className={cn(
-                    "absolute bottom-0 left-2 right-2 h-[2px] rounded-full bg-gold transition-all duration-200",
-                    isActive
-                      ? "opacity-100 scale-x-100"
-                      : "opacity-0 scale-x-0 group-hover:opacity-40 group-hover:scale-x-100",
-                  )}
-                  style={{ transformOrigin: "center" }}
-                />
-              </Link>
-            );
-          })}
-          {/* Admin link — only for admin users */}
-          {isAdmin === true && (
-            <Link
-              to="/admin/subscribers"
-              data-ocid="nav.admin.link"
-              className="relative group"
+          {/* Logo */}
+          <Link to="/" className="flex items-center gap-2 group">
+            <motion.div
+              className="relative flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10"
+              whileHover={{ scale: 1.05 }}
             >
-              <Button
-                variant="ghost"
-                size="sm"
-                className={cn(
-                  "gap-1.5 font-ui font-semibold text-sm transition-all duration-200",
-                  location.pathname === "/admin/subscribers"
-                    ? "text-gold hover:text-gold hover:bg-transparent"
-                    : "text-muted-foreground hover:text-foreground hover:bg-transparent",
-                )}
-              >
-                <Shield className="h-4 w-4" />
-                Admin
-              </Button>
-              <span
-                className={cn(
-                  "absolute bottom-0 left-2 right-2 h-[2px] rounded-full bg-gold transition-all duration-200",
-                  location.pathname === "/admin/subscribers"
-                    ? "opacity-100 scale-x-100"
-                    : "opacity-0 scale-x-0 group-hover:opacity-40 group-hover:scale-x-100",
-                )}
-                style={{ transformOrigin: "center" }}
-              />
-            </Link>
-          )}
-          {/* Admin Setup link — visible to all authenticated users */}
-          {isAuthenticated && isAdmin !== true && (
-            <Link
-              to="/admin/setup"
-              data-ocid="nav.admin_setup.link"
-              className="relative group"
-            >
-              <Button
-                variant="ghost"
-                size="sm"
-                className={cn(
-                  "gap-1.5 font-ui font-semibold text-sm transition-all duration-200",
-                  location.pathname === "/admin/setup"
-                    ? "text-gold hover:text-gold hover:bg-transparent"
-                    : "text-muted-foreground hover:text-foreground hover:bg-transparent",
-                )}
-              >
-                <KeyRound className="h-4 w-4" />
-                Admin Setup
-              </Button>
-              <span
-                className={cn(
-                  "absolute bottom-0 left-2 right-2 h-[2px] rounded-full bg-gold transition-all duration-200",
-                  location.pathname === "/admin/setup"
-                    ? "opacity-100 scale-x-100"
-                    : "opacity-0 scale-x-0 group-hover:opacity-40 group-hover:scale-x-100",
-                )}
-                style={{ transformOrigin: "center" }}
-              />
-            </Link>
-          )}
-        </nav>
+              <Music2 className="h-5 w-5 text-gold" />
+              <div className="absolute inset-0 rounded-lg bg-gold/10 opacity-0 group-hover:opacity-100 transition-opacity" />
+            </motion.div>
+            <span className="font-display text-xl font-black tracking-tight">
+              <span className="text-gold">CHOSEN</span>
+              <span className="text-foreground"> ONE</span>
+            </span>
+          </Link>
+        </div>
 
         {/* Auth button + notifications */}
         <div className="flex items-center gap-2">
@@ -491,84 +400,103 @@ export function Navbar() {
         </div>
       </div>
 
-      {/* Mobile nav */}
-      <nav className="md:hidden flex border-t border-border">
-        {navLinks.map((link) => {
-          const Icon = link.icon;
-          const isActive = location.pathname === link.to;
-          const isBattles = link.to === "/battles";
-          const battleBadge =
-            isBattles && isAuthenticated && pendingBattleCount > 0;
-          return (
-            <Link
-              key={link.to}
-              to={link.to}
-              data-ocid={link.ocid}
-              className="flex-1"
-            >
-              <button
-                type="button"
-                className={cn(
-                  "w-full flex flex-col items-center gap-1 py-2 text-xs font-ui font-semibold transition-colors relative",
-                  isActive ? "text-gold" : "text-muted-foreground",
-                )}
+      {/* Hamburger Sheet — all nav links */}
+      <Sheet open={menuOpen} onOpenChange={setMenuOpen}>
+        <SheetContent
+          side="left"
+          className="w-72 p-0 bg-card border-r border-border flex flex-col"
+          data-ocid="nav.menu.sheet"
+        >
+          <SheetHeader className="px-5 py-5 border-b border-border shrink-0">
+            <SheetTitle asChild>
+              <Link
+                to="/"
+                className="flex items-center gap-2 group"
+                onClick={() => setMenuOpen(false)}
               >
-                <span className="relative">
-                  <Icon className="h-4 w-4" />
-                  {battleBadge && (
-                    <span className="absolute -top-1 -right-1.5 h-3.5 min-w-3.5 px-0.5 rounded-full bg-red-500 text-[8px] font-bold text-white flex items-center justify-center">
-                      {pendingBattleCount > 9 ? "9+" : pendingBattleCount}
-                    </span>
-                  )}
+                <div className="relative flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10">
+                  <Music2 className="h-5 w-5 text-gold" />
+                </div>
+                <span className="font-display text-xl font-black tracking-tight">
+                  <span className="text-gold">CHOSEN</span>
+                  <span className="text-foreground"> ONE</span>
                 </span>
-                {link.label}
-              </button>
-            </Link>
-          );
-        })}
-        {/* Admin link — only for admin users */}
-        {isAdmin === true && (
-          <Link
-            to="/admin/subscribers"
-            data-ocid="nav.admin.link"
-            className="flex-1"
-          >
-            <button
-              type="button"
-              className={cn(
-                "w-full flex flex-col items-center gap-1 py-2 text-xs font-ui font-semibold transition-colors",
-                location.pathname === "/admin/subscribers"
-                  ? "text-gold"
-                  : "text-muted-foreground",
-              )}
-            >
-              <Shield className="h-4 w-4" />
-              Admin
-            </button>
-          </Link>
-        )}
-        {/* Admin Setup link — visible to all authenticated non-admin users */}
-        {isAuthenticated && isAdmin !== true && (
-          <Link
-            to="/admin/setup"
-            data-ocid="nav.admin_setup.link"
-            className="flex-1"
-          >
-            <button
-              type="button"
-              className={cn(
-                "w-full flex flex-col items-center gap-1 py-2 text-xs font-ui font-semibold transition-colors",
-                location.pathname === "/admin/setup"
-                  ? "text-gold"
-                  : "text-muted-foreground",
-              )}
-            >
-              <KeyRound className="h-4 w-4" />
-              Setup
-            </button>
-          </Link>
-        )}
-      </nav>
+              </Link>
+            </SheetTitle>
+          </SheetHeader>
+
+          {/* Nav links list */}
+          <ScrollArea className="flex-1">
+            <nav className="flex flex-col gap-1 px-3 py-4">
+              {navLinks.map((link) => {
+                const Icon = link.icon;
+                const isActive = location.pathname === link.to;
+                const isBattles = link.to === "/battles";
+                const battleBadge =
+                  isBattles && isAuthenticated && pendingBattleCount > 0;
+                return (
+                  <Link
+                    key={link.to}
+                    to={link.to}
+                    data-ocid={link.ocid}
+                    onClick={() => setMenuOpen(false)}
+                    className={cn(
+                      "flex items-center gap-3 px-3 py-3 rounded-lg font-ui font-semibold text-sm transition-all duration-150",
+                      isActive
+                        ? "bg-gold/10 text-gold border border-gold/20"
+                        : "text-muted-foreground hover:text-foreground hover:bg-secondary/60",
+                    )}
+                  >
+                    <Icon className="h-4 w-4 shrink-0" />
+                    <span className="flex-1">{link.label}</span>
+                    {battleBadge && (
+                      <span className="h-5 min-w-5 px-1 rounded-full bg-red-500 text-[9px] font-bold text-white flex items-center justify-center font-ui tabular-nums">
+                        {pendingBattleCount > 9 ? "9+" : pendingBattleCount}
+                      </span>
+                    )}
+                    {isActive && (
+                      <span className="h-1.5 w-1.5 rounded-full bg-gold shrink-0" />
+                    )}
+                  </Link>
+                );
+              })}
+            </nav>
+          </ScrollArea>
+
+          {/* Sign in / out at bottom */}
+          <div className="px-4 py-4 border-t border-border shrink-0">
+            {isAuthenticated ? (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  clear();
+                  setMenuOpen(false);
+                }}
+                className="w-full gap-2 font-ui font-semibold border-border text-muted-foreground hover:text-foreground hover:border-gold/40"
+                data-ocid="nav.menu.signout.button"
+              >
+                <LogOut className="h-4 w-4" />
+                Sign Out
+              </Button>
+            ) : (
+              <Button
+                size="sm"
+                onClick={() => {
+                  login();
+                  setMenuOpen(false);
+                }}
+                disabled={isLoggingIn}
+                className="w-full gap-2 font-ui font-bold bg-gold/20 text-gold hover:bg-gold/30 border border-gold/30"
+                data-ocid="nav.menu.signin.button"
+              >
+                <LogIn className="h-4 w-4" />
+                {isLoggingIn ? "Signing in…" : "Sign In"}
+              </Button>
+            )}
+          </div>
+        </SheetContent>
+      </Sheet>
     </header>
   );
 }
