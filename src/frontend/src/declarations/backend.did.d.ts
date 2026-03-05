@@ -45,6 +45,7 @@ export interface CommentReply {
   'text' : string,
   'timestamp' : bigint,
 }
+export interface EmailSubscriber { 'subscribedAt' : bigint, 'email' : string }
 export type ExternalBlob = Uint8Array;
 export interface MusicRequest {
   'id' : string,
@@ -141,6 +142,8 @@ export interface _SERVICE {
   'getCallerUserProfile' : ActorMethod<[], [] | [UserProfile]>,
   'getCallerUserRole' : ActorMethod<[], UserRole>,
   'getCommentsForTrack' : ActorMethod<[string], Array<Comment>>,
+  'getEmailSubscriberCount' : ActorMethod<[], bigint>,
+  'getEmailSubscribers' : ActorMethod<[], Array<EmailSubscriber>>,
   'getFollowedArtists' : ActorMethod<[], Array<Principal>>,
   'getFollowerCount' : ActorMethod<[Principal], bigint>,
   'getMusicRequestsSentByMe' : ActorMethod<[], Array<MusicRequest>>,
@@ -179,6 +182,7 @@ export interface _SERVICE {
   'respondToBattle' : ActorMethod<[string, string, boolean], undefined>,
   'saveCallerUserProfile' : ActorMethod<[UserProfile], undefined>,
   'sendMusicRequest' : ActorMethod<[Principal, string], undefined>,
+  'subscribeToEmailList' : ActorMethod<[string], undefined>,
   'unfollowArtist' : ActorMethod<[Principal], undefined>,
   'unlikeTrack' : ActorMethod<[string], undefined>,
   'uploadTrack' : ActorMethod<

@@ -12,10 +12,12 @@ import {
   Bell,
   CornerDownRight,
   Eye,
+  KeyRound,
   ListMusic,
   LogIn,
   LogOut,
   Music2,
+  Shield,
   Swords,
   Trophy,
   Upload,
@@ -32,6 +34,7 @@ import {
   useMyProfileViewNotifications,
 } from "../hooks/useProfileViewNotifications";
 import {
+  useIsCallerAdmin,
   useMarkNotificationsRead,
   useMyNotifications,
   usePendingBattlesForMe,
@@ -200,6 +203,7 @@ export function Navbar() {
   const { data: notifications } = useMyNotifications();
   const markRead = useMarkNotificationsRead();
   const { data: pendingBattles } = usePendingBattlesForMe();
+  const { data: isAdmin } = useIsCallerAdmin();
 
   // Profile view notifications (localStorage-only, client-side)
   const {
@@ -303,6 +307,68 @@ export function Navbar() {
               </Link>
             );
           })}
+          {/* Admin link — only for admin users */}
+          {isAdmin === true && (
+            <Link
+              to="/admin/subscribers"
+              data-ocid="nav.admin.link"
+              className="relative group"
+            >
+              <Button
+                variant="ghost"
+                size="sm"
+                className={cn(
+                  "gap-1.5 font-ui font-semibold text-sm transition-all duration-200",
+                  location.pathname === "/admin/subscribers"
+                    ? "text-gold hover:text-gold hover:bg-transparent"
+                    : "text-muted-foreground hover:text-foreground hover:bg-transparent",
+                )}
+              >
+                <Shield className="h-4 w-4" />
+                Admin
+              </Button>
+              <span
+                className={cn(
+                  "absolute bottom-0 left-2 right-2 h-[2px] rounded-full bg-gold transition-all duration-200",
+                  location.pathname === "/admin/subscribers"
+                    ? "opacity-100 scale-x-100"
+                    : "opacity-0 scale-x-0 group-hover:opacity-40 group-hover:scale-x-100",
+                )}
+                style={{ transformOrigin: "center" }}
+              />
+            </Link>
+          )}
+          {/* Admin Setup link — visible to all authenticated users */}
+          {isAuthenticated && isAdmin !== true && (
+            <Link
+              to="/admin/setup"
+              data-ocid="nav.admin_setup.link"
+              className="relative group"
+            >
+              <Button
+                variant="ghost"
+                size="sm"
+                className={cn(
+                  "gap-1.5 font-ui font-semibold text-sm transition-all duration-200",
+                  location.pathname === "/admin/setup"
+                    ? "text-gold hover:text-gold hover:bg-transparent"
+                    : "text-muted-foreground hover:text-foreground hover:bg-transparent",
+                )}
+              >
+                <KeyRound className="h-4 w-4" />
+                Admin Setup
+              </Button>
+              <span
+                className={cn(
+                  "absolute bottom-0 left-2 right-2 h-[2px] rounded-full bg-gold transition-all duration-200",
+                  location.pathname === "/admin/setup"
+                    ? "opacity-100 scale-x-100"
+                    : "opacity-0 scale-x-0 group-hover:opacity-40 group-hover:scale-x-100",
+                )}
+                style={{ transformOrigin: "center" }}
+              />
+            </Link>
+          )}
         </nav>
 
         {/* Auth button + notifications */}
@@ -460,6 +526,48 @@ export function Navbar() {
             </Link>
           );
         })}
+        {/* Admin link — only for admin users */}
+        {isAdmin === true && (
+          <Link
+            to="/admin/subscribers"
+            data-ocid="nav.admin.link"
+            className="flex-1"
+          >
+            <button
+              type="button"
+              className={cn(
+                "w-full flex flex-col items-center gap-1 py-2 text-xs font-ui font-semibold transition-colors",
+                location.pathname === "/admin/subscribers"
+                  ? "text-gold"
+                  : "text-muted-foreground",
+              )}
+            >
+              <Shield className="h-4 w-4" />
+              Admin
+            </button>
+          </Link>
+        )}
+        {/* Admin Setup link — visible to all authenticated non-admin users */}
+        {isAuthenticated && isAdmin !== true && (
+          <Link
+            to="/admin/setup"
+            data-ocid="nav.admin_setup.link"
+            className="flex-1"
+          >
+            <button
+              type="button"
+              className={cn(
+                "w-full flex flex-col items-center gap-1 py-2 text-xs font-ui font-semibold transition-colors",
+                location.pathname === "/admin/setup"
+                  ? "text-gold"
+                  : "text-muted-foreground",
+              )}
+            >
+              <KeyRound className="h-4 w-4" />
+              Setup
+            </button>
+          </Link>
+        )}
       </nav>
     </header>
   );

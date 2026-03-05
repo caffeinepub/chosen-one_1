@@ -65,6 +65,10 @@ export const Comment = IDL.Record({
   'trackId' : IDL.Text,
   'timestamp' : IDL.Int,
 });
+export const EmailSubscriber = IDL.Record({
+  'subscribedAt' : IDL.Int,
+  'email' : IDL.Text,
+});
 export const MusicRequest = IDL.Record({
   'id' : IDL.Text,
   'fromUserId' : IDL.Principal,
@@ -169,6 +173,8 @@ export const idlService = IDL.Service({
   'getCallerUserProfile' : IDL.Func([], [IDL.Opt(UserProfile)], ['query']),
   'getCallerUserRole' : IDL.Func([], [UserRole], ['query']),
   'getCommentsForTrack' : IDL.Func([IDL.Text], [IDL.Vec(Comment)], ['query']),
+  'getEmailSubscriberCount' : IDL.Func([], [IDL.Nat], ['query']),
+  'getEmailSubscribers' : IDL.Func([], [IDL.Vec(EmailSubscriber)], ['query']),
   'getFollowedArtists' : IDL.Func([], [IDL.Vec(IDL.Principal)], ['query']),
   'getFollowerCount' : IDL.Func([IDL.Principal], [IDL.Nat], ['query']),
   'getMusicRequestsSentByMe' : IDL.Func([], [IDL.Vec(MusicRequest)], ['query']),
@@ -222,6 +228,7 @@ export const idlService = IDL.Service({
   'respondToBattle' : IDL.Func([IDL.Text, IDL.Text, IDL.Bool], [], []),
   'saveCallerUserProfile' : IDL.Func([UserProfile], [], []),
   'sendMusicRequest' : IDL.Func([IDL.Principal, IDL.Text], [], []),
+  'subscribeToEmailList' : IDL.Func([IDL.Text], [], []),
   'unfollowArtist' : IDL.Func([IDL.Principal], [], []),
   'unlikeTrack' : IDL.Func([IDL.Text], [], []),
   'uploadTrack' : IDL.Func(
@@ -302,6 +309,10 @@ export const idlFactory = ({ IDL }) => {
     'text' : IDL.Text,
     'trackId' : IDL.Text,
     'timestamp' : IDL.Int,
+  });
+  const EmailSubscriber = IDL.Record({
+    'subscribedAt' : IDL.Int,
+    'email' : IDL.Text,
   });
   const MusicRequest = IDL.Record({
     'id' : IDL.Text,
@@ -407,6 +418,8 @@ export const idlFactory = ({ IDL }) => {
     'getCallerUserProfile' : IDL.Func([], [IDL.Opt(UserProfile)], ['query']),
     'getCallerUserRole' : IDL.Func([], [UserRole], ['query']),
     'getCommentsForTrack' : IDL.Func([IDL.Text], [IDL.Vec(Comment)], ['query']),
+    'getEmailSubscriberCount' : IDL.Func([], [IDL.Nat], ['query']),
+    'getEmailSubscribers' : IDL.Func([], [IDL.Vec(EmailSubscriber)], ['query']),
     'getFollowedArtists' : IDL.Func([], [IDL.Vec(IDL.Principal)], ['query']),
     'getFollowerCount' : IDL.Func([IDL.Principal], [IDL.Nat], ['query']),
     'getMusicRequestsSentByMe' : IDL.Func(
@@ -468,6 +481,7 @@ export const idlFactory = ({ IDL }) => {
     'respondToBattle' : IDL.Func([IDL.Text, IDL.Text, IDL.Bool], [], []),
     'saveCallerUserProfile' : IDL.Func([UserProfile], [], []),
     'sendMusicRequest' : IDL.Func([IDL.Principal, IDL.Text], [], []),
+    'subscribeToEmailList' : IDL.Func([IDL.Text], [], []),
     'unfollowArtist' : IDL.Func([IDL.Principal], [], []),
     'unlikeTrack' : IDL.Func([IDL.Text], [], []),
     'uploadTrack' : IDL.Func(

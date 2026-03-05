@@ -15,9 +15,7 @@ import AccessControl "authorization/access-control";
 import Float "mo:core/Float";
 import List "mo:core/List";
 
-
 import MixinAuthorization "authorization/MixinAuthorization";
-
 
 actor {
   // Mixin components
@@ -178,6 +176,27 @@ actor {
     timestamp : Int;
   };
 
+  // Email subscriber type
+  type EmailSubscriber = {
+    email : Text;
+    subscribedAt : Int;
+  };
+
+  module EmailSubscriber {
+    public func compareByTimestamp(a : EmailSubscriber, b : EmailSubscriber) : Order.Order {
+      let timeOrder = Int.compare(a.subscribedAt, b.subscribedAt);
+      switch (timeOrder) {
+        case (#equal) {
+          switch (Text.compare(a.email, b.email)) {
+            case (#equal) { Int.compare(a.subscribedAt, b.subscribedAt) };
+            case (order) { order };
+          };
+        };
+        case (order) { order };
+      };
+    };
+  };
+
   // Store user profiles, tracks, and comments in persistent Maps
   let userProfiles = Map.empty<Principal, UserProfile>();
   let tracks = Map.empty<Text, Track>();
@@ -198,6 +217,9 @@ actor {
 
   // Store battles in persistent map
   let battles = Map.empty<Text, Battle>();
+
+  // Store email subscribers in persistent map
+  let emailSubscribers = Map.empty<Text, Int>();
 
   // Profile management
   public shared ({ caller }) func createOrUpdateProfile(
@@ -1175,6 +1197,49 @@ actor {
         let aCreated = a.createdAt;
         let bCreated = b.createdAt;
         if (aCreated > bCreated) { #less } else if (aCreated < bCreated) { #greater } else { #equal };
+      }
+    );
+  };
+
+  // EMAIL SUBSCRIBER FUNCTIONALITY
+
+  // Subscribe an email to the newsletter list
+  public shared func subscribeToEmailList(email : Text) : async () {
+    if (email.trim(#predicate(Char.isWhitespace)).size() == 0) {
+      Runtime.trap("Email is required");
+    };
+
+    if (not email.contains(#char('@'))) {
+      Runtime.trap("Invalid email format");
+    };
+
+    // Silently succeed if email already exists
+    if (emailSubscribers.containsKey(email)) {
+      return ();
+    };
+
+    // Store with current timestamp
+    let timestamp = Time.now();
+    emailSubscribers.add(email, timestamp);
+  };
+
+  // Get total email subscriber count
+  public query func getEmailSubscriberCount() : async Nat {
+    emailSubscribers.size();
+  };
+
+  // Get all email subscribers (admin only)
+  public query ({ caller }) func getEmailSubscribers() : async [EmailSubscriber] {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #admin))) {
+      Runtime.trap("Unauthorized: Only admins can access subscribers");
+    };
+
+    emailSubscribers.toArray().map(
+      func((email, timestamp)) {
+        {
+          email;
+          subscribedAt = timestamp;
+        };
       }
     );
   };

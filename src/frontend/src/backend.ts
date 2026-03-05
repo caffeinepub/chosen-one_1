@@ -161,6 +161,10 @@ export interface Notification {
     replyText?: string;
     fromArtistId: Principal;
 }
+export interface EmailSubscriber {
+    subscribedAt: bigint;
+    email: string;
+}
 export interface Battle {
     id: string;
     status: BattleStatus;
@@ -225,6 +229,8 @@ export interface backendInterface {
     getCallerUserProfile(): Promise<UserProfile | null>;
     getCallerUserRole(): Promise<UserRole>;
     getCommentsForTrack(trackId: string): Promise<Array<Comment>>;
+    getEmailSubscriberCount(): Promise<bigint>;
+    getEmailSubscribers(): Promise<Array<EmailSubscriber>>;
     getFollowedArtists(): Promise<Array<Principal>>;
     getFollowerCount(artistId: Principal): Promise<bigint>;
     getMusicRequestsSentByMe(): Promise<Array<MusicRequest>>;
@@ -254,6 +260,7 @@ export interface backendInterface {
     respondToBattle(battleId: string, defenderTrackId: string, accept: boolean): Promise<void>;
     saveCallerUserProfile(profile: UserProfile): Promise<void>;
     sendMusicRequest(toArtistId: Principal, message: string): Promise<void>;
+    subscribeToEmailList(email: string): Promise<void>;
     unfollowArtist(artistId: Principal): Promise<void>;
     unlikeTrack(trackId: string): Promise<void>;
     uploadTrack(id: string, title: string, artist: string, description: string, genre: string, audioFileKey: ExternalBlob, coverKey: ExternalBlob | null, city: string, state: string, region: string): Promise<void>;
@@ -553,6 +560,34 @@ export class Backend implements backendInterface {
             }
         } else {
             const result = await this.actor.getCommentsForTrack(arg0);
+            return result;
+        }
+    }
+    async getEmailSubscriberCount(): Promise<bigint> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.getEmailSubscriberCount();
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.getEmailSubscriberCount();
+            return result;
+        }
+    }
+    async getEmailSubscribers(): Promise<Array<EmailSubscriber>> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.getEmailSubscribers();
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.getEmailSubscribers();
             return result;
         }
     }
@@ -959,6 +994,20 @@ export class Backend implements backendInterface {
             }
         } else {
             const result = await this.actor.sendMusicRequest(arg0, arg1);
+            return result;
+        }
+    }
+    async subscribeToEmailList(arg0: string): Promise<void> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.subscribeToEmailList(arg0);
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.subscribeToEmailList(arg0);
             return result;
         }
     }

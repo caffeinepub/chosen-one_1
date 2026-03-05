@@ -796,3 +796,66 @@ export function useCallerFollowingList() {
     enabled: !!actor && !isFetching,
   });
 }
+
+/* ── Email Subscriber Count ──────────────────────────── */
+export function useEmailSubscriberCount() {
+  const { actor, isFetching } = useActor();
+  return useQuery<bigint>({
+    queryKey: ["email-subscriber-count"],
+    queryFn: async () => {
+      if (!actor) return BigInt(0);
+      return actor.getEmailSubscriberCount();
+    },
+    enabled: !!actor && !isFetching,
+    staleTime: 60_000,
+  });
+}
+
+/* ── Is Caller Admin ─────────────────────────────────── */
+export function useIsCallerAdmin() {
+  const { actor, isFetching } = useActor();
+  return useQuery<boolean>({
+    queryKey: ["is-caller-admin"],
+    queryFn: async () => {
+      if (!actor) return false;
+      return actor.isCallerAdmin();
+    },
+    enabled: !!actor && !isFetching,
+    staleTime: 300_000,
+  });
+}
+
+/* ── Email Subscribers List ──────────────────────────── */
+export function useEmailSubscribers() {
+  const { actor, isFetching } = useActor();
+  return useQuery<import("../backend.d").EmailSubscriber[]>({
+    queryKey: ["email-subscribers"],
+    queryFn: async () => {
+      if (!actor) return [];
+      return actor.getEmailSubscribers();
+    },
+    enabled: !!actor && !isFetching,
+    staleTime: 30_000,
+  });
+}
+
+/* ── Claim Admin Role ────────────────────────────────── */
+export function useClaimAdmin() {
+  const { actor } = useActor();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (token: string) => {
+      if (!actor) throw new Error("Not authenticated");
+      // _initializeAccessControlWithSecret is available on the raw actor
+      await (
+        actor as unknown as {
+          _initializeAccessControlWithSecret: (token: string) => Promise<void>;
+        }
+      )._initializeAccessControlWithSecret(token);
+    },
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ["is-caller-admin"] });
+      void qc.invalidateQueries({ queryKey: ["caller-role"] });
+    },
+  });
+}

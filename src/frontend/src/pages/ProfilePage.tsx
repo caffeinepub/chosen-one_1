@@ -17,6 +17,7 @@ import {
   Image,
   ImagePlus,
   Loader2,
+  Mail,
   MessageSquare,
   User,
   UserX,
@@ -33,6 +34,7 @@ import {
   useCallerFollowerCount,
   useCallerFollowingList,
   useCallerProfile,
+  useEmailSubscriberCount,
   useMyMusicRequests,
   useReplyToRequest,
   useRequestReply,
@@ -496,8 +498,10 @@ export function ProfilePage() {
   // Stats
   const { data: followerCount } = useCallerFollowerCount();
   const { data: followedArtists } = useCallerFollowingList();
+  const { data: emailSubscriberCount } = useEmailSubscriberCount();
   const followingCount = followedArtists?.length ?? 0;
   const followerNum = followerCount ? Number(followerCount) : 0;
+  const subscriberNum = emailSubscriberCount ? Number(emailSubscriberCount) : 0;
 
   // Member count via localStorage
   const [memberCount, setMemberCount] = useState(0);
@@ -888,39 +892,57 @@ export function ProfilePage() {
         )}
 
         {/* ── Stats Bar ─────────────────────────────────── */}
-        <div
-          className="grid grid-cols-3 gap-3"
-          data-ocid="profile.followers.panel"
-        >
-          <div className="rounded-xl border border-border bg-card px-4 py-3 flex flex-col items-center gap-1">
-            <span className="text-2xl font-display font-black text-gold">
-              {followerNum.toLocaleString()}
-            </span>
-            <span className="text-xs text-muted-foreground font-ui font-semibold uppercase tracking-wider">
-              Followers
-            </span>
-          </div>
-          <div className="rounded-xl border border-border bg-card px-4 py-3 flex flex-col items-center gap-1">
-            <span className="text-2xl font-display font-black text-foreground">
-              {followingCount.toLocaleString()}
-            </span>
-            <span className="text-xs text-muted-foreground font-ui font-semibold uppercase tracking-wider">
-              Following
-            </span>
-          </div>
-          <div
-            className="rounded-xl border border-border bg-card px-4 py-3 flex flex-col items-center gap-1"
-            data-ocid="profile.members.card"
-          >
-            <div className="flex items-center gap-1.5">
-              <Users className="h-5 w-5 text-blue-400/70" />
-              <span className="text-2xl font-display font-black text-blue-400">
-                {memberCount.toLocaleString()}
+        <div className="space-y-3" data-ocid="profile.followers.panel">
+          {/* Row 1: Followers + Following */}
+          <div className="grid grid-cols-2 gap-3">
+            <div className="rounded-xl border border-border bg-card px-4 py-3 flex flex-col items-center gap-1">
+              <span className="text-2xl font-display font-black text-gold">
+                {followerNum.toLocaleString()}
+              </span>
+              <span className="text-xs text-muted-foreground font-ui font-semibold uppercase tracking-wider">
+                Followers
               </span>
             </div>
-            <span className="text-xs text-muted-foreground font-ui font-semibold uppercase tracking-wider text-center">
-              Members Joined
-            </span>
+            <div className="rounded-xl border border-border bg-card px-4 py-3 flex flex-col items-center gap-1">
+              <span className="text-2xl font-display font-black text-foreground">
+                {followingCount.toLocaleString()}
+              </span>
+              <span className="text-xs text-muted-foreground font-ui font-semibold uppercase tracking-wider">
+                Following
+              </span>
+            </div>
+          </div>
+
+          {/* Row 2: Members Joined + Subscribers */}
+          <div className="grid grid-cols-2 gap-3">
+            <div
+              className="rounded-xl border border-border bg-card px-4 py-3 flex flex-col items-center gap-1"
+              data-ocid="profile.members.card"
+            >
+              <div className="flex items-center gap-1.5">
+                <Users className="h-5 w-5 text-blue-400/70" />
+                <span className="text-2xl font-display font-black text-blue-400">
+                  {memberCount.toLocaleString()}
+                </span>
+              </div>
+              <span className="text-xs text-muted-foreground font-ui font-semibold uppercase tracking-wider text-center">
+                Members Joined
+              </span>
+            </div>
+            <div
+              className="rounded-xl border border-border bg-card px-4 py-3 flex flex-col items-center gap-1"
+              data-ocid="profile.subscribers.card"
+            >
+              <div className="flex items-center gap-1.5">
+                <Mail className="h-5 w-5 text-gold/70" />
+                <span className="text-2xl font-display font-black text-gold">
+                  {subscriberNum.toLocaleString()}
+                </span>
+              </div>
+              <span className="text-xs text-muted-foreground font-ui font-semibold uppercase tracking-wider text-center">
+                Subscribers
+              </span>
+            </div>
           </div>
         </div>
 
