@@ -14,6 +14,7 @@ import {
   LogIn,
   LogOut,
   Music2,
+  Search,
   Swords,
   Trophy,
   Upload,
@@ -84,6 +85,12 @@ function NotificationItem({
 
 const navLinks = [
   { to: "/", label: "Charts", icon: ListMusic, ocid: "nav.charts.link" },
+  {
+    to: "/artists",
+    label: "Artists",
+    icon: Search,
+    ocid: "nav.artists.link",
+  },
   {
     to: "/following",
     label: "Following",

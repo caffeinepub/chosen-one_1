@@ -21,7 +21,11 @@ import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import { Link } from "@tanstack/react-router";
 import {
+  Award,
+  CheckCircle2,
   ChevronDown,
+  Crown,
+  Flame,
   Globe,
   Heart,
   Loader2,
@@ -31,8 +35,9 @@ import {
   Pause,
   Play,
   PlayCircle,
+  Rocket,
   Send,
-  Share2,
+  Star,
   TrendingUp,
   Users,
 } from "lucide-react";
@@ -41,7 +46,6 @@ import { useState } from "react";
 import { toast } from "sonner";
 import type { AverageRating } from "../backend.d";
 import { CommentsSection } from "../components/CommentsSection";
-import { ShareModal } from "../components/ShareModal";
 import { StarRating } from "../components/StarRating";
 import { type QueueTrack, usePlayer } from "../contexts/PlayerContext";
 import { useGlobalListeners } from "../hooks/useGlobalListeners";
@@ -55,6 +59,7 @@ import {
   useLikeTrack,
   useRateTrack,
   useSendMusicRequest,
+  useTopThreeTracks,
 } from "../hooks/useQueries";
 
 function toQueueTrack(entry: AverageRating): QueueTrack {
@@ -171,22 +176,468 @@ function RankBadge({ rank }: { rank: number }) {
   );
 }
 
+/* ── Reward Badge ─────────────────────────────────────── */
+function RewardBadge({ rank }: { rank: number }) {
+  if (rank === 1) {
+    return (
+      <motion.span
+        initial={{ scale: 0.8, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        transition={{ type: "spring", stiffness: 300, damping: 20 }}
+        className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-ui font-bold border shrink-0"
+        style={{
+          background:
+            "linear-gradient(135deg, oklch(0.78 0.17 72 / 0.25), oklch(0.70 0.20 60 / 0.15))",
+          borderColor: "oklch(0.78 0.17 72 / 0.5)",
+          color: "oklch(0.85 0.18 72)",
+          boxShadow:
+            "0 0 12px oklch(0.78 0.17 72 / 0.35), 0 0 4px oklch(0.78 0.17 72 / 0.2)",
+          animation: "reward-badge-pulse 2s ease-in-out infinite",
+        }}
+        title="Crown Champion — #1 on the charts!"
+      >
+        <Crown className="h-3 w-3" />
+        Crown Champion
+      </motion.span>
+    );
+  }
+  if (rank === 2) {
+    return (
+      <motion.span
+        initial={{ scale: 0.8, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        transition={{
+          type: "spring",
+          stiffness: 300,
+          damping: 20,
+          delay: 0.05,
+        }}
+        className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-ui font-bold border shrink-0"
+        style={{
+          background:
+            "linear-gradient(135deg, oklch(0.75 0.02 260 / 0.25), oklch(0.65 0.03 250 / 0.15))",
+          borderColor: "oklch(0.75 0.03 260 / 0.5)",
+          color: "oklch(0.85 0.03 260)",
+          boxShadow: "0 0 8px oklch(0.75 0.03 260 / 0.2)",
+          animation: "reward-badge-shimmer 3s ease-in-out infinite",
+        }}
+        title="Rising Star — #2 on the charts!"
+      >
+        <Star className="h-3 w-3" />
+        Rising Star
+      </motion.span>
+    );
+  }
+  if (rank === 3) {
+    return (
+      <motion.span
+        initial={{ scale: 0.8, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        transition={{ type: "spring", stiffness: 300, damping: 20, delay: 0.1 }}
+        className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-ui font-bold border shrink-0"
+        style={{
+          background:
+            "linear-gradient(135deg, oklch(0.68 0.13 50 / 0.25), oklch(0.62 0.15 45 / 0.15))",
+          borderColor: "oklch(0.68 0.13 50 / 0.5)",
+          color: "oklch(0.78 0.14 50)",
+          boxShadow: "0 0 8px oklch(0.68 0.13 50 / 0.2)",
+        }}
+        title="On Fire — #3 on the charts!"
+      >
+        <Flame className="h-3 w-3" />
+        On Fire
+      </motion.span>
+    );
+  }
+  return null;
+}
+
+/* ── Distribution Modal ──────────────────────────────── */
+function DistributionModal({
+  open,
+  onClose,
+  trackTitle,
+  artistName,
+  rank,
+}: {
+  open: boolean;
+  onClose: () => void;
+  trackTitle: string;
+  artistName: string;
+  rank: number;
+}) {
+  const [step, setStep] = useState<"confirm" | "success">("confirm");
+
+  const handleClose = () => {
+    setStep("confirm");
+    onClose();
+  };
+
+  const handleConfirm = () => {
+    setStep("success");
+    toast.success(`Distribution request submitted for ${trackTitle}!`);
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={handleClose}>
+      <DialogContent
+        className="bg-card border-border max-w-md"
+        data-ocid="distribution.dialog"
+      >
+        <DialogHeader>
+          <DialogTitle className="font-display font-bold flex items-center gap-2">
+            {rank === 1 && <Crown className="h-5 w-5 text-gold" />}
+            {rank === 2 && <Star className="h-5 w-5 text-slate-300" />}
+            {rank === 3 && <Flame className="h-5 w-5 text-orange-400" />}
+            Music Distribution
+          </DialogTitle>
+        </DialogHeader>
+
+        <AnimatePresence mode="wait">
+          {step === "confirm" ? (
+            <motion.div
+              key="confirm"
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              transition={{ duration: 0.2 }}
+              className="space-y-4 py-2"
+            >
+              {/* Track info */}
+              <div
+                className="rounded-lg border p-4 space-y-2"
+                style={{
+                  background:
+                    rank === 1
+                      ? "linear-gradient(135deg, oklch(0.78 0.17 72 / 0.08), oklch(0.70 0.20 60 / 0.04))"
+                      : rank === 2
+                        ? "linear-gradient(135deg, oklch(0.75 0.02 260 / 0.08), transparent)"
+                        : "linear-gradient(135deg, oklch(0.68 0.13 50 / 0.08), transparent)",
+                  borderColor:
+                    rank === 1
+                      ? "oklch(0.78 0.17 72 / 0.3)"
+                      : rank === 2
+                        ? "oklch(0.75 0.03 260 / 0.3)"
+                        : "oklch(0.68 0.13 50 / 0.3)",
+                }}
+              >
+                <div className="flex items-center gap-2">
+                  <RewardBadge rank={rank} />
+                </div>
+                <p className="font-display font-bold text-foreground">
+                  {trackTitle}
+                </p>
+                <p className="text-sm text-muted-foreground font-ui">
+                  by {artistName}
+                </p>
+                <p className="text-xs text-muted-foreground/70 font-ui">
+                  Current rank: #{rank}
+                </p>
+              </div>
+
+              <p className="text-sm text-muted-foreground font-ui leading-relaxed">
+                Submit{" "}
+                <span className="text-foreground font-semibold">
+                  {trackTitle}
+                </span>{" "}
+                to music distribution? This will help get your AI music on
+                streaming platforms like Spotify, Apple Music, and more.
+              </p>
+
+              <div className="flex items-start gap-2 rounded-lg bg-secondary/50 border border-border p-3">
+                <Award className="h-4 w-4 text-gold shrink-0 mt-0.5" />
+                <p className="text-xs text-muted-foreground font-ui">
+                  Top-ranked tracks get priority placement in distribution
+                  review. Your #{rank} position gives you an advantage!
+                </p>
+              </div>
+            </motion.div>
+          ) : (
+            <motion.div
+              key="success"
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.25, type: "spring" }}
+              className="flex flex-col items-center gap-4 py-6 text-center"
+            >
+              <motion.div
+                initial={{ scale: 0, rotate: -20 }}
+                animate={{ scale: 1, rotate: 0 }}
+                transition={{ type: "spring", stiffness: 250, damping: 18 }}
+              >
+                <CheckCircle2 className="h-16 w-16 text-green-400" />
+              </motion.div>
+              <div className="space-y-1">
+                <h3 className="font-display font-bold text-xl text-foreground">
+                  Submitted!
+                </h3>
+                <p className="text-sm text-muted-foreground font-ui">
+                  Your track is queued for distribution review.
+                </p>
+              </div>
+              <div className="flex items-center gap-2 rounded-full bg-gold/10 border border-gold/25 px-4 py-2">
+                <Rocket className="h-4 w-4 text-gold" />
+                <span className="text-sm font-ui font-semibold text-gold">
+                  {trackTitle} — on its way!
+                </span>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        <DialogFooter className="gap-2">
+          {step === "confirm" ? (
+            <>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handleClose}
+                className="font-ui border-border"
+                data-ocid="distribution.cancel_button"
+              >
+                Cancel
+              </Button>
+              <Button
+                type="button"
+                onClick={handleConfirm}
+                className="font-ui font-bold gap-2"
+                style={{
+                  background:
+                    rank === 1
+                      ? "linear-gradient(135deg, oklch(0.78 0.17 72 / 0.3), oklch(0.70 0.20 60 / 0.2))"
+                      : rank === 2
+                        ? "oklch(0.75 0.02 260 / 0.2)"
+                        : "oklch(0.68 0.13 50 / 0.2)",
+                  color:
+                    rank === 1
+                      ? "oklch(0.85 0.18 72)"
+                      : rank === 2
+                        ? "oklch(0.85 0.03 260)"
+                        : "oklch(0.78 0.14 50)",
+                  borderColor:
+                    rank === 1
+                      ? "oklch(0.78 0.17 72 / 0.4)"
+                      : rank === 2
+                        ? "oklch(0.75 0.03 260 / 0.4)"
+                        : "oklch(0.68 0.13 50 / 0.4)",
+                  border: "1px solid",
+                }}
+                data-ocid="distribution.confirm_button"
+              >
+                <Rocket className="h-4 w-4" />
+                Confirm
+              </Button>
+            </>
+          ) : (
+            <Button
+              type="button"
+              onClick={handleClose}
+              className="font-ui bg-secondary text-foreground hover:bg-secondary/80 border border-border"
+              data-ocid="distribution.close_button"
+            >
+              Close
+            </Button>
+          )}
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+/* ── Distribution CTA Bar ────────────────────────────── */
+function DistributionCTABar({
+  rank,
+  trackTitle,
+  artistName,
+}: {
+  rank: number;
+  trackTitle: string;
+  artistName: string;
+}) {
+  const [modalOpen, setModalOpen] = useState(false);
+
+  if (rank === 1) {
+    return (
+      <>
+        <motion.div
+          initial={{ opacity: 0, y: -4 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.1 }}
+          className="mx-4 mb-3 rounded-lg px-4 py-2.5 flex items-center gap-3 flex-wrap"
+          style={{
+            background:
+              "linear-gradient(135deg, oklch(0.78 0.17 72 / 0.15), oklch(0.70 0.20 60 / 0.08))",
+            border: "1px solid oklch(0.78 0.17 72 / 0.35)",
+            boxShadow: "0 0 20px oklch(0.78 0.17 72 / 0.1)",
+          }}
+          data-ocid="distribution.cta.card"
+        >
+          <Crown
+            className="h-4 w-4 shrink-0"
+            style={{ color: "oklch(0.85 0.18 72)" }}
+          />
+          <span
+            className="flex-1 text-sm font-ui font-bold min-w-0"
+            style={{ color: "oklch(0.85 0.18 72)" }}
+          >
+            #1 Chart-Topper — Your track is ready for Distribution!
+          </span>
+          <Button
+            size="sm"
+            onClick={(e) => {
+              e.stopPropagation();
+              setModalOpen(true);
+            }}
+            className="font-ui font-bold text-xs h-7 shrink-0 gap-1.5"
+            style={{
+              background:
+                "linear-gradient(135deg, oklch(0.78 0.17 72 / 0.35), oklch(0.70 0.20 60 / 0.25))",
+              color: "oklch(0.92 0.16 72)",
+              border: "1px solid oklch(0.78 0.17 72 / 0.5)",
+              boxShadow: "0 0 10px oklch(0.78 0.17 72 / 0.2)",
+            }}
+            data-ocid="distribution.submit.primary_button"
+          >
+            <Rocket className="h-3 w-3" />
+            Submit to Distribution
+          </Button>
+        </motion.div>
+        <DistributionModal
+          open={modalOpen}
+          onClose={() => setModalOpen(false)}
+          trackTitle={trackTitle}
+          artistName={artistName}
+          rank={rank}
+        />
+      </>
+    );
+  }
+
+  if (rank === 2) {
+    return (
+      <>
+        <motion.div
+          initial={{ opacity: 0, y: -4 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.1 }}
+          className="mx-4 mb-3 rounded-lg px-3 py-2 flex items-center gap-2.5 flex-wrap"
+          style={{
+            background: "oklch(0.75 0.02 260 / 0.08)",
+            border: "1px solid oklch(0.75 0.03 260 / 0.25)",
+          }}
+          data-ocid="distribution.cta.card"
+        >
+          <Star
+            className="h-3.5 w-3.5 shrink-0"
+            style={{ color: "oklch(0.85 0.03 260)" }}
+          />
+          <span
+            className="flex-1 text-xs font-ui font-semibold min-w-0"
+            style={{ color: "oklch(0.80 0.03 260)" }}
+          >
+            Your track is trending — Consider Distribution
+          </span>
+          <Button
+            size="sm"
+            onClick={(e) => {
+              e.stopPropagation();
+              setModalOpen(true);
+            }}
+            className="font-ui font-bold text-xs h-6 shrink-0"
+            style={{
+              background: "oklch(0.75 0.02 260 / 0.2)",
+              color: "oklch(0.85 0.03 260)",
+              border: "1px solid oklch(0.75 0.03 260 / 0.4)",
+            }}
+            data-ocid="distribution.submit.secondary_button"
+          >
+            Submit
+          </Button>
+        </motion.div>
+        <DistributionModal
+          open={modalOpen}
+          onClose={() => setModalOpen(false)}
+          trackTitle={trackTitle}
+          artistName={artistName}
+          rank={rank}
+        />
+      </>
+    );
+  }
+
+  if (rank === 3) {
+    return (
+      <>
+        <motion.div
+          initial={{ opacity: 0, y: -4 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.1 }}
+          className="mx-4 mb-3 rounded-md px-3 py-1.5 flex items-center gap-2 flex-wrap"
+          style={{
+            background: "oklch(0.68 0.13 50 / 0.06)",
+            border: "1px solid oklch(0.68 0.13 50 / 0.2)",
+          }}
+          data-ocid="distribution.cta.card"
+        >
+          <Flame
+            className="h-3.5 w-3.5 shrink-0"
+            style={{ color: "oklch(0.78 0.14 50)" }}
+          />
+          <span
+            className="flex-1 text-xs font-ui font-medium min-w-0"
+            style={{ color: "oklch(0.75 0.10 50)" }}
+          >
+            Rising to the top — Distribution awaits
+          </span>
+          <Button
+            size="sm"
+            onClick={(e) => {
+              e.stopPropagation();
+              setModalOpen(true);
+            }}
+            className="font-ui font-semibold text-xs h-6 shrink-0"
+            style={{
+              background: "oklch(0.68 0.13 50 / 0.15)",
+              color: "oklch(0.78 0.14 50)",
+              border: "1px solid oklch(0.68 0.13 50 / 0.35)",
+            }}
+            data-ocid="distribution.explore.button"
+          >
+            Explore
+          </Button>
+        </motion.div>
+        <DistributionModal
+          open={modalOpen}
+          onClose={() => setModalOpen(false)}
+          trackTitle={trackTitle}
+          artistName={artistName}
+          rank={rank}
+        />
+      </>
+    );
+  }
+
+  return null;
+}
+
 function TrackCard({
   entry,
   rank,
   index,
   contextQueue,
+  isTop3,
 }: {
   entry: AverageRating;
   rank: number;
   index: number;
   contextQueue: QueueTrack[];
+  isTop3: boolean;
 }) {
   const [expanded, setExpanded] = useState(false);
   const [userRating, setUserRating] = useState(0);
   const [requestOpen, setRequestOpen] = useState(false);
   const [requestMessage, setRequestMessage] = useState("");
-  const [shareOpen, setShareOpen] = useState(false);
   const { identity } = useInternetIdentity();
   const isAuthenticated = !!identity;
   const callerPrincipal = identity?.getPrincipal().toString();
@@ -326,14 +777,17 @@ function TrackCard({
 
             {/* Title, artist & location */}
             <div className="flex-1 min-w-0">
-              <h3
-                className={cn(
-                  "font-display font-bold truncate text-base leading-tight",
-                  isTopTrack ? "text-gold" : "text-foreground",
-                )}
-              >
-                {track.title}
-              </h3>
+              <div className="flex items-center gap-2 flex-wrap">
+                <h3
+                  className={cn(
+                    "font-display font-bold truncate text-base leading-tight",
+                    isTopTrack ? "text-gold" : "text-foreground",
+                  )}
+                >
+                  {track.title}
+                </h3>
+                {isTop3 && rank <= 3 && <RewardBadge rank={rank} />}
+              </div>
               <Link
                 to="/artist/$principalId"
                 params={{ principalId: track.ownerId.toString() }}
@@ -444,21 +898,6 @@ function TrackCard({
               </button>
             )}
 
-            {/* Share button */}
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                setShareOpen(true);
-              }}
-              data-ocid="track.share.open_modal_button"
-              aria-label="Share this track"
-              className="flex items-center gap-1 rounded-lg px-2 py-1.5 text-xs font-ui font-semibold text-muted-foreground hover:text-gold hover:bg-gold/10 transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold/50"
-            >
-              <Share2 className="h-3.5 w-3.5" />
-              <span className="hidden sm:inline">Share</span>
-            </button>
-
             {/* Play / Pause button */}
             <button
               type="button"
@@ -494,6 +933,15 @@ function TrackCard({
             </button>
           </div>
         </div>
+
+        {/* Distribution CTA — only for owner when in top 3 and not expanded */}
+        {isTop3 && rank <= 3 && isOwner && !expanded && (
+          <DistributionCTABar
+            rank={rank}
+            trackTitle={track.title}
+            artistName={track.artist}
+          />
+        )}
 
         {/* Expanded detail */}
         <AnimatePresence>
@@ -550,14 +998,6 @@ function TrackCard({
           )}
         </AnimatePresence>
       </div>
-
-      {/* Share Modal */}
-      <ShareModal
-        open={shareOpen}
-        onOpenChange={setShareOpen}
-        url={`${window.location.origin}/artist/${track.ownerId.toString()}`}
-        title={`${track.title} by ${track.artist} on Chosen One`}
-      />
 
       {/* Request Music Dialog */}
       <Dialog open={requestOpen} onOpenChange={setRequestOpen}>
@@ -673,6 +1113,10 @@ function ChartsList({
   selectedGenre: string | null;
 }) {
   const player = usePlayer();
+
+  // Top 3 global track IDs for reward badges
+  const top3Query = useTopThreeTracks();
+  const top3Ids = new Set((top3Query.data ?? []).map((e) => e.track.id));
 
   // Decide which query to use
   const allTimeQuery = useCharts();
@@ -807,6 +1251,7 @@ function ChartsList({
             rank={originalRank}
             index={idx}
             contextQueue={queueTracks}
+            isTop3={top3Ids.has(entry.track.id)}
           />
         );
       })}

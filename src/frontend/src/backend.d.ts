@@ -136,6 +136,7 @@ export interface backendInterface {
     getPendingBattlesForMe(): Promise<Array<Battle>>;
     getRepliesForComment(commentId: string): Promise<Array<CommentReply>>;
     getReplyForRequest(requestId: string): Promise<RequestReply | null>;
+    getTopThreeTracks(): Promise<Array<AverageRating>>;
     getTrackAverageRating(id: string): Promise<number>;
     getTrackById(id: string): Promise<Track | null>;
     getTracksByOwner(owner: Principal): Promise<Array<Track>>;

@@ -467,6 +467,30 @@ actor {
     averageRatings.sort(Track.compareAverageRating);
   };
 
+  public query func getTopThreeTracks() : async [Track.AverageRating] {
+    let allTracks = tracks.values().toArray();
+
+    let averageRatings = allTracks.map(
+      func(track) {
+        {
+          track;
+          averageRating = calculateAverageRating(track);
+        };
+      }
+    );
+
+    let sortedRatings = averageRatings.sort(Track.compareAverageRating);
+
+    let limit = Nat.min(3, sortedRatings.size());
+
+    Array.tabulate(
+      limit,
+      func(i) {
+        sortedRatings[i];
+      },
+    );
+  };
+
   public query ({ caller }) func getOwnTracks() : async [Track] {
     if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
       Runtime.trap("Unauthorized: Only users can get their uploaded tracks");

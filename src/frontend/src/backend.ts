@@ -229,6 +229,7 @@ export interface backendInterface {
     getPendingBattlesForMe(): Promise<Array<Battle>>;
     getRepliesForComment(commentId: string): Promise<Array<CommentReply>>;
     getReplyForRequest(requestId: string): Promise<RequestReply | null>;
+    getTopThreeTracks(): Promise<Array<AverageRating>>;
     getTrackAverageRating(id: string): Promise<number>;
     getTrackById(id: string): Promise<Track | null>;
     getTracksByOwner(owner: Principal): Promise<Array<Track>>;
@@ -702,6 +703,20 @@ export class Backend implements backendInterface {
             return from_candid_opt_n35(this._uploadFile, this._downloadFile, result);
         }
     }
+    async getTopThreeTracks(): Promise<Array<AverageRating>> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.getTopThreeTracks();
+                return from_candid_vec_n39(this._uploadFile, this._downloadFile, result);
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.getTopThreeTracks();
+            return from_candid_vec_n39(this._uploadFile, this._downloadFile, result);
+        }
+    }
     async getTrackAverageRating(arg0: string): Promise<number> {
         if (this.processError) {
             try {
@@ -720,14 +735,14 @@ export class Backend implements backendInterface {
         if (this.processError) {
             try {
                 const result = await this.actor.getTrackById(arg0);
-                return from_candid_opt_n39(this._uploadFile, this._downloadFile, result);
+                return from_candid_opt_n42(this._uploadFile, this._downloadFile, result);
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
             const result = await this.actor.getTrackById(arg0);
-            return from_candid_opt_n39(this._uploadFile, this._downloadFile, result);
+            return from_candid_opt_n42(this._uploadFile, this._downloadFile, result);
         }
     }
     async getTracksByOwner(arg0: Principal): Promise<Array<Track>> {
@@ -748,42 +763,42 @@ export class Backend implements backendInterface {
         if (this.processError) {
             try {
                 const result = await this.actor.getTracksFilteredByLocation(arg0, arg1, arg2);
-                return from_candid_vec_n40(this._uploadFile, this._downloadFile, result);
+                return from_candid_vec_n39(this._uploadFile, this._downloadFile, result);
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
             const result = await this.actor.getTracksFilteredByLocation(arg0, arg1, arg2);
-            return from_candid_vec_n40(this._uploadFile, this._downloadFile, result);
+            return from_candid_vec_n39(this._uploadFile, this._downloadFile, result);
         }
     }
     async getTracksSortedByRating(): Promise<Array<AverageRating>> {
         if (this.processError) {
             try {
                 const result = await this.actor.getTracksSortedByRating();
-                return from_candid_vec_n40(this._uploadFile, this._downloadFile, result);
+                return from_candid_vec_n39(this._uploadFile, this._downloadFile, result);
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
             const result = await this.actor.getTracksSortedByRating();
-            return from_candid_vec_n40(this._uploadFile, this._downloadFile, result);
+            return from_candid_vec_n39(this._uploadFile, this._downloadFile, result);
         }
     }
     async getTracksSortedByRatingInWindow(arg0: string): Promise<Array<AverageRating>> {
         if (this.processError) {
             try {
                 const result = await this.actor.getTracksSortedByRatingInWindow(arg0);
-                return from_candid_vec_n40(this._uploadFile, this._downloadFile, result);
+                return from_candid_vec_n39(this._uploadFile, this._downloadFile, result);
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
             const result = await this.actor.getTracksSortedByRatingInWindow(arg0);
-            return from_candid_vec_n40(this._uploadFile, this._downloadFile, result);
+            return from_candid_vec_n39(this._uploadFile, this._downloadFile, result);
         }
     }
     async getUserProfile(arg0: Principal): Promise<UserProfile | null> {
@@ -997,8 +1012,8 @@ export class Backend implements backendInterface {
         }
     }
 }
-async function from_candid_AverageRating_n41(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _AverageRating): Promise<AverageRating> {
-    return await from_candid_record_n42(_uploadFile, _downloadFile, value);
+async function from_candid_AverageRating_n40(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _AverageRating): Promise<AverageRating> {
+    return await from_candid_record_n41(_uploadFile, _downloadFile, value);
 }
 function from_candid_BattleSide_n22(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _BattleSide): BattleSide {
     return from_candid_variant_n23(_uploadFile, _downloadFile, value);
@@ -1048,7 +1063,7 @@ async function from_candid_opt_n29(_uploadFile: (file: ExternalBlob) => Promise<
 function from_candid_opt_n35(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: [] | [_RequestReply]): RequestReply | null {
     return value.length === 0 ? null : value[0];
 }
-async function from_candid_opt_n39(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: [] | [_Track]): Promise<Track | null> {
+async function from_candid_opt_n42(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: [] | [_Track]): Promise<Track | null> {
     return value.length === 0 ? null : await from_candid_Track_n37(_uploadFile, _downloadFile, value[0]);
 }
 function from_candid_opt_n6(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: [] | [boolean]): boolean | null {
@@ -1174,7 +1189,7 @@ async function from_candid_record_n38(_uploadFile: (file: ExternalBlob) => Promi
         coverKey: record_opt_to_undefined(await from_candid_opt_n29(_uploadFile, _downloadFile, value.coverKey))
     };
 }
-async function from_candid_record_n42(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
+async function from_candid_record_n41(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
     track: _Track;
     averageRating: number;
 }): Promise<{
@@ -1243,8 +1258,8 @@ function from_candid_vec_n33(_uploadFile: (file: ExternalBlob) => Promise<Uint8A
 async function from_candid_vec_n36(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: Array<_Track>): Promise<Array<Track>> {
     return await Promise.all(value.map(async (x)=>await from_candid_Track_n37(_uploadFile, _downloadFile, x)));
 }
-async function from_candid_vec_n40(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: Array<_AverageRating>): Promise<Array<AverageRating>> {
-    return await Promise.all(value.map(async (x)=>await from_candid_AverageRating_n41(_uploadFile, _downloadFile, x)));
+async function from_candid_vec_n39(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: Array<_AverageRating>): Promise<Array<AverageRating>> {
+    return await Promise.all(value.map(async (x)=>await from_candid_AverageRating_n40(_uploadFile, _downloadFile, x)));
 }
 function to_candid_BattleSide_n45(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: BattleSide): _BattleSide {
     return to_candid_variant_n46(_uploadFile, _downloadFile, value);

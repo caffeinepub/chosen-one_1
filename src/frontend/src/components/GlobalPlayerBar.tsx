@@ -1,4 +1,11 @@
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   Sheet,
@@ -16,6 +23,7 @@ import {
   Play,
   Repeat,
   Repeat1,
+  Share2,
   Shuffle,
   SkipBack,
   SkipForward,
@@ -24,6 +32,8 @@ import {
 } from "lucide-react";
 import { motion } from "motion/react";
 import { useState } from "react";
+import { FaFacebook, FaTelegram, FaTwitter, FaWhatsapp } from "react-icons/fa";
+import { toast } from "sonner";
 import { type RepeatMode, usePlayer } from "../contexts/PlayerContext";
 import { useLiveListeners } from "../hooks/useLiveListeners";
 
@@ -61,9 +71,30 @@ export function GlobalPlayerBar() {
   } = usePlayer();
 
   const [queueOpen, setQueueOpen] = useState(false);
+  const [shareOpen, setShareOpen] = useState(false);
 
   const currentTrack = currentIndex >= 0 ? queue[currentIndex] : null;
   const listenerCount = useLiveListeners(currentTrack?.id ?? "");
+
+  const shareUrl = currentTrack
+    ? `${window.location.origin}/#/track/${currentTrack.id}`
+    : "";
+  const shareText = currentTrack
+    ? `Check out '${currentTrack.title}' by ${currentTrack.artist} on Chosen One!`
+    : "";
+
+  const handleCopyLink = async () => {
+    try {
+      await navigator.clipboard.writeText(shareUrl);
+      toast.success("Link copied!");
+    } catch {
+      toast.error("Failed to copy link");
+    }
+  };
+
+  const openSocial = (url: string) => {
+    window.open(url, "_blank", "noopener,noreferrer,width=600,height=500");
+  };
 
   if (queue.length === 0) return null;
 
@@ -393,6 +424,153 @@ export function GlobalPlayerBar() {
               </ScrollArea>
             </SheetContent>
           </Sheet>
+
+          {/* Share button */}
+          {currentTrack && (
+            <>
+              <button
+                type="button"
+                onClick={() => setShareOpen(true)}
+                aria-label="Share current track"
+                data-ocid="player.share.open_modal_button"
+                className={cn(
+                  "p-1.5 rounded-lg transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold/50",
+                  "text-muted-foreground hover:text-gold hover:bg-gold/10",
+                )}
+              >
+                <Share2 className="h-4 w-4" />
+              </button>
+
+              <Dialog open={shareOpen} onOpenChange={setShareOpen}>
+                <DialogContent
+                  className="bg-card border-border max-w-sm"
+                  data-ocid="player.share.dialog"
+                >
+                  <DialogHeader>
+                    <DialogTitle className="font-display font-bold text-foreground">
+                      Share Track
+                    </DialogTitle>
+                  </DialogHeader>
+
+                  {/* Track info */}
+                  <div className="flex items-center gap-3 mb-4">
+                    <div className="h-12 w-12 rounded-lg overflow-hidden shrink-0 bg-secondary border border-gold/20">
+                      {currentTrack.coverUrl ? (
+                        <img
+                          src={currentTrack.coverUrl}
+                          alt={`${currentTrack.title} cover`}
+                          className="h-full w-full object-cover"
+                        />
+                      ) : (
+                        <div className="h-full w-full flex items-center justify-center bg-gradient-to-br from-gold/10 via-secondary to-secondary">
+                          <Music2 className="h-5 w-5 text-gold/50" />
+                        </div>
+                      )}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="font-display font-bold text-sm text-foreground truncate leading-tight">
+                        {currentTrack.title}
+                      </p>
+                      <p className="text-xs text-muted-foreground font-ui truncate mt-0.5">
+                        {currentTrack.artist}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* QR Code */}
+                  <div className="flex justify-center mb-4">
+                    <div className="rounded-xl border border-gold/20 overflow-hidden p-2 bg-[#1a1a1a]">
+                      <img
+                        src={`https://api.qrserver.com/v1/create-qr-code/?data=${encodeURIComponent(shareUrl)}&size=180x180&color=D4AF37&bgcolor=1a1a1a`}
+                        alt="QR code for track"
+                        width={180}
+                        height={180}
+                        className="rounded-lg"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Copy link */}
+                  <div className="flex items-center gap-2 mb-4">
+                    <Input
+                      readOnly
+                      value={shareUrl}
+                      data-ocid="player.share.copy_link.input"
+                      className="bg-secondary border-border text-muted-foreground text-xs font-ui h-9 flex-1"
+                    />
+                    <Button
+                      size="sm"
+                      onClick={handleCopyLink}
+                      data-ocid="player.share.copy_link.button"
+                      className="shrink-0 h-9 bg-gold/20 hover:bg-gold/30 text-gold border border-gold/40 hover:border-gold/60 font-ui text-xs"
+                    >
+                      Copy
+                    </Button>
+                  </div>
+
+                  {/* Social share buttons */}
+                  <div className="grid grid-cols-2 gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() =>
+                        openSocial(
+                          `https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}&url=${encodeURIComponent(shareUrl)}`,
+                        )
+                      }
+                      data-ocid="player.share.twitter.button"
+                      className="gap-2 font-ui text-xs border-border hover:border-[#1DA1F2]/40 hover:bg-[#1DA1F2]/10 hover:text-[#1DA1F2]"
+                    >
+                      <FaTwitter className="h-3.5 w-3.5 text-[#1DA1F2]" />
+                      Twitter / X
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() =>
+                        openSocial(
+                          `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl)}`,
+                        )
+                      }
+                      data-ocid="player.share.facebook.button"
+                      className="gap-2 font-ui text-xs border-border hover:border-[#1877F2]/40 hover:bg-[#1877F2]/10 hover:text-[#1877F2]"
+                    >
+                      <FaFacebook className="h-3.5 w-3.5 text-[#1877F2]" />
+                      Facebook
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() =>
+                        openSocial(
+                          `https://wa.me/?text=${encodeURIComponent(`${shareText} ${shareUrl}`)}`,
+                        )
+                      }
+                      data-ocid="player.share.whatsapp.button"
+                      className="gap-2 font-ui text-xs border-border hover:border-[#25D366]/40 hover:bg-[#25D366]/10 hover:text-[#25D366]"
+                    >
+                      <FaWhatsapp className="h-3.5 w-3.5 text-[#25D366]" />
+                      WhatsApp
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() =>
+                        openSocial(
+                          `https://t.me/share/url?url=${encodeURIComponent(shareUrl)}&text=${encodeURIComponent(shareText)}`,
+                        )
+                      }
+                      data-ocid="player.share.telegram.button"
+                      className="gap-2 font-ui text-xs border-border hover:border-[#26A5E4]/40 hover:bg-[#26A5E4]/10 hover:text-[#26A5E4]"
+                    >
+                      <FaTelegram className="h-3.5 w-3.5 text-[#26A5E4]" />
+                      Telegram
+                    </Button>
+                  </div>
+                </DialogContent>
+              </Dialog>
+            </>
+          )}
         </div>
       </div>
     </motion.div>

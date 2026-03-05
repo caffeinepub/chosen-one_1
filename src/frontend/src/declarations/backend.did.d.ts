@@ -151,6 +151,7 @@ export interface _SERVICE {
   'getPendingBattlesForMe' : ActorMethod<[], Array<Battle>>,
   'getRepliesForComment' : ActorMethod<[string], Array<CommentReply>>,
   'getReplyForRequest' : ActorMethod<[string], [] | [RequestReply]>,
+  'getTopThreeTracks' : ActorMethod<[], Array<AverageRating>>,
   'getTrackAverageRating' : ActorMethod<[string], number>,
   'getTrackById' : ActorMethod<[string], [] | [Track]>,
   'getTracksByOwner' : ActorMethod<[Principal], Array<Track>>,

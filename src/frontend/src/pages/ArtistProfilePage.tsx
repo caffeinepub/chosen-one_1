@@ -23,7 +23,6 @@ import {
   Pause,
   Play,
   PlayCircle,
-  Share2,
   Swords,
   User,
   UserCheck,
@@ -34,7 +33,6 @@ import { AnimatePresence, motion } from "motion/react";
 import { useState } from "react";
 import type { Track } from "../backend.d";
 import { CommentsSection } from "../components/CommentsSection";
-import { ShareModal } from "../components/ShareModal";
 import { StarRating } from "../components/StarRating";
 import { type QueueTrack, usePlayer } from "../contexts/PlayerContext";
 import { useInternetIdentity } from "../hooks/useInternetIdentity";
@@ -345,7 +343,6 @@ export function ArtistProfilePage() {
   const { identity } = useInternetIdentity();
   const isAuthenticated = !!identity;
   const player = usePlayer();
-  const [shareOpen, setShareOpen] = useState(false);
 
   let principal: Principal | undefined;
   let parseError = false;
@@ -595,29 +592,9 @@ export function ArtistProfilePage() {
             {!isOwnProfile && isAuthenticated && principalId && (
               <ChallengeArtistButton defenderPrincipalId={principalId} />
             )}
-
-            {/* Share button */}
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => setShareOpen(true)}
-              data-ocid="artist.share.open_modal_button"
-              className="gap-1.5 font-ui font-semibold text-xs h-8 px-3 border-border text-muted-foreground hover:text-gold hover:border-gold/40 transition-all duration-200"
-            >
-              <Share2 className="h-3.5 w-3.5" />
-              Share
-            </Button>
           </div>
         </div>
       </motion.div>
-
-      {/* Share Modal */}
-      <ShareModal
-        open={shareOpen}
-        onOpenChange={setShareOpen}
-        url={`${window.location.origin}/artist/${principalId}`}
-        title={`${username} on Chosen One – AI Music Charts`}
-      />
 
       {/* Tracks section */}
       <div className="px-4 sm:px-6 mt-8 space-y-4">

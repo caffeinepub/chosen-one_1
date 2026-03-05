@@ -756,6 +756,20 @@ export function useCallerFollowerCount() {
   });
 }
 
+/* ── Top Three Tracks ────────────────────────────────── */
+export function useTopThreeTracks() {
+  const { actor, isFetching } = useActor();
+  return useQuery<AverageRating[]>({
+    queryKey: ["topThreeTracks"],
+    queryFn: async () => {
+      if (!actor) return [];
+      return actor.getTopThreeTracks();
+    },
+    enabled: !!actor && !isFetching,
+    staleTime: 60_000,
+  });
+}
+
 /* ── Caller Following List ───────────────────────────── */
 export function useCallerFollowingList() {
   const { actor, isFetching } = useActor();

@@ -1,30 +1,26 @@
 # Chosen One
 
 ## Current State
-The app is a full-featured AI music charts platform with track cards on ChartsPage, artist profile pages (ArtistProfilePage), My Tracks, Following feed, and a global player bar. Tracks and artist profiles are viewable but have no sharing capability.
+Full-stack AI music charts app with Charts, Leaderboard, Upload, My Tracks, Profile, Artist Profile, Following, and Battles pages. The `useAllArtists` hook already exists in `useQueries.ts` and aggregates unique artists from the charts data. No artist directory or search page exists yet.
 
 ## Requested Changes (Diff)
 
 ### Add
-- A `ShareButton` reusable component that opens a share modal/dialog with:
-  1. **Copy Link** -- copies the current shareable URL to clipboard, shows a toast confirmation
-  2. **QR Code** -- generates a QR code for the URL using a canvas-based QR generator (no external library needed, use qrcode library from npm or inline canvas generation)
-  3. **Social media sharing** -- Twitter/X, Facebook, WhatsApp, Telegram share links that open in new tab
-- Share button on each TrackCard in ChartsPage (shares the track's artist profile page URL)
-- Share button on ArtistProfilePage (shares the artist profile URL)
-- Share button on ArtistTrackRow (within artist profile track list)
+- A new "Artists" page (`/artists`) accessible from the navbar
+- Search bar on the Artists page that filters artists by name in real time
+- Artists displayed in alphabetical order (A–Z)
+- Each artist card shows profile picture (avatar fallback if none), username, and a link to their public artist profile page
+- Empty state when no artists have uploaded yet
+- No-results state when the search query matches nothing
 
 ### Modify
-- `ChartsPage.tsx` -- add Share button to TrackCard header row actions
-- `ArtistProfilePage.tsx` -- add Share button to the profile header stats row
-- Install `qrcode` npm package (or use inline QR generation via canvas)
+- Navbar: add "Artists" link between Charts and Following (or at a logical position)
+- `App.tsx`: register the new `/artists` route
 
 ### Remove
 - Nothing
 
 ## Implementation Plan
-1. Install `qrcode` package for QR code generation (and `@types/qrcode` for types)
-2. Create `src/frontend/src/components/ShareModal.tsx` -- reusable share dialog with copy link, QR code canvas, and social share buttons for Twitter/X, Facebook, WhatsApp, Telegram
-3. Add Share button + ShareModal to `TrackCard` in `ChartsPage.tsx` (shares artist profile URL `/artist/:principalId`)
-4. Add Share button + ShareModal to `ArtistProfilePage.tsx` header area (shares the current profile URL)
-5. Optionally add Share button to `ArtistTrackRow` on the artist profile page
+1. Create `src/frontend/src/pages/ArtistsPage.tsx` — uses `useAllArtists` hook, local search state, filters and sorts A–Z, renders artist cards with avatar + username + profile link
+2. Update `App.tsx` — import `ArtistsPage`, add `artistsRoute` at path `/artists`, add to `routeTree`
+3. Update `Navbar.tsx` — add "Artists" nav link to the navigation

@@ -234,3 +234,24 @@
     background-color: oklch(var(--gold) / 0.08);
   }
 }
+
+/* ── Reward Badge Animations ────────────────────────── */
+@keyframes reward-badge-pulse {
+  0%, 100% {
+    box-shadow: 0 0 8px oklch(0.78 0.17 72 / 0.25), 0 0 3px oklch(0.78 0.17 72 / 0.15);
+  }
+  50% {
+    box-shadow: 0 0 18px oklch(0.78 0.17 72 / 0.55), 0 0 8px oklch(0.78 0.17 72 / 0.3);
+  }
+}
+
+@keyframes reward-badge-shimmer {
+  0%, 100% {
+    box-shadow: 0 0 6px oklch(0.75 0.03 260 / 0.15);
+    opacity: 1;
+  }
+  50% {
+    box-shadow: 0 0 12px oklch(0.75 0.03 260 / 0.35);
+    opacity: 0.85;
+  }
+}
