@@ -19,6 +19,7 @@ import { LeaderboardPage } from "./pages/LeaderboardPage";
 import { MyTracksPage } from "./pages/MyTracksPage";
 import { PlaylistsPage } from "./pages/PlaylistsPage";
 import { ProfilePage } from "./pages/ProfilePage";
+import { TermsPage } from "./pages/TermsPage";
 import { UploadPage } from "./pages/UploadPage";
 
 /* ── Root layout inner (needs usePlayer for pb-20) ──── */
@@ -125,6 +126,12 @@ const aboutRoute = createRoute({
   component: AboutPage,
 });
 
+const termsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/terms",
+  component: TermsPage,
+});
+
 /* ── Router ──────────────────────────────────────────── */
 const routeTree = rootRoute.addChildren([
   chartsRoute,
@@ -137,6 +144,7 @@ const routeTree = rootRoute.addChildren([
   profileRoute,
   artistProfileRoute,
   aboutRoute,
+  termsRoute,
 ]);
 
 const router = createRouter({ routeTree });

@@ -18,6 +18,7 @@ import {
   Bell,
   CornerDownRight,
   Eye,
+  FileText,
   Info,
   Library,
   ListMusic,
@@ -206,6 +207,7 @@ const navLinks = [
   },
   { to: "/profile", label: "Profile", icon: User, ocid: "nav.profile.link" },
   { to: "/about", label: "About", icon: Info, ocid: "nav.about.link" },
+  { to: "/terms", label: "Terms", icon: FileText, ocid: "nav.terms.link" },
 ];
 
 export function Navbar() {

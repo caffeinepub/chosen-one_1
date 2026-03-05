@@ -1,4 +1,5 @@
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
@@ -11,7 +12,7 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
-import { useNavigate } from "@tanstack/react-router";
+import { Link, useNavigate } from "@tanstack/react-router";
 import {
   CheckCircle2,
   Image,
@@ -129,6 +130,7 @@ export function UploadPage() {
     "idle" | "uploading" | "success" | "error"
   >("idle");
   const [errorMsg, setErrorMsg] = useState("");
+  const [agreedToTerms, setAgreedToTerms] = useState(false);
 
   const audioInputRef = useRef<HTMLInputElement>(null);
   const coverInputRef = useRef<HTMLInputElement>(null);
@@ -601,6 +603,34 @@ export function UploadPage() {
             </div>
           )}
 
+          {/* Terms & Conditions acceptance */}
+          <div className="flex items-start gap-3 rounded-xl border border-border bg-secondary/30 p-4">
+            <Checkbox
+              id="terms-checkbox"
+              checked={agreedToTerms}
+              onCheckedChange={(checked) => setAgreedToTerms(checked === true)}
+              className="mt-0.5 shrink-0 border-gold/40 data-[state=checked]:bg-gold data-[state=checked]:border-gold data-[state=checked]:text-void"
+              data-ocid="upload.terms.checkbox"
+            />
+            <label
+              htmlFor="terms-checkbox"
+              className="font-ui text-sm text-muted-foreground leading-relaxed cursor-pointer select-none"
+            >
+              I confirm this is my original AI-generated music and I agree to
+              the{" "}
+              <Link
+                to="/terms"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-gold hover:text-gold/80 underline underline-offset-2 font-semibold transition-colors"
+              >
+                Terms &amp; Conditions
+              </Link>
+              . I do not upload music owned by or attributed to any other
+              artist.
+            </label>
+          </div>
+
           {/* Submit */}
           <Button
             type="submit"
@@ -613,7 +643,8 @@ export function UploadPage() {
               !city ||
               !state ||
               !region ||
-              !audioFile
+              !audioFile ||
+              !agreedToTerms
             }
             className="w-full gap-2 bg-gold/20 text-gold hover:bg-gold/30 border border-gold/30 font-ui font-bold h-11"
             data-ocid="upload.submit_button"

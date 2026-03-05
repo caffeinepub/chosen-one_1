@@ -1,3 +1,4 @@
+import { Link } from "@tanstack/react-router";
 import { Music2 } from "lucide-react";
 import { EmailSubscribeWidget } from "./EmailSubscribeWidget";
 
@@ -31,21 +32,31 @@ export function Footer() {
               CHOSEN ONE
             </span>
           </div>
-          <p>
-            © {year}. Built with{" "}
-            <span className="text-gold" aria-label="love">
-              ♥
-            </span>{" "}
-            using{" "}
-            <a
-              href={`https://caffeine.ai?utm_source=caffeine-footer&utm_medium=referral&utm_content=${hostname}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-gold hover:text-gold/80 transition-colors underline underline-offset-2"
+          <div className="flex items-center gap-4 flex-wrap justify-center">
+            <Link
+              to="/terms"
+              className="text-muted-foreground hover:text-gold transition-colors underline underline-offset-2"
+              data-ocid="footer.terms.link"
             >
-              caffeine.ai
-            </a>
-          </p>
+              Terms &amp; Conditions
+            </Link>
+            <span className="hidden sm:inline text-border">·</span>
+            <p>
+              © {year}. Built with{" "}
+              <span className="text-gold" aria-label="love">
+                ♥
+              </span>{" "}
+              using{" "}
+              <a
+                href={`https://caffeine.ai?utm_source=caffeine-footer&utm_medium=referral&utm_content=${hostname}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-gold hover:text-gold/80 transition-colors underline underline-offset-2"
+              >
+                caffeine.ai
+              </a>
+            </p>
+          </div>
         </div>
       </div>
     </footer>
